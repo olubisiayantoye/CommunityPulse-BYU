@@ -198,6 +198,9 @@ const Login = () => {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200"></div>
             </div>
+            <p>username: admin@communitypulse.dev Password: Admin123!</p>
+             <p>username:johnson@gmail.com Password: Qwer@1234</p>
+
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-white text-slate-500">New to CommunityPulse?</span>
             </div>
