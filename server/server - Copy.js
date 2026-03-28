@@ -1,4 +1,3 @@
-// server.js
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -6,9 +5,7 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import { v2 as cloudinary } from 'cloudinary';
-import path from 'path';
-import mongoose from 'mongoose';
+import { v2 as cloudinary } from 'cloudinary'; // Optional: for avatar uploads
 
 // Import database connection
 import connectDB from './config/db.js';
@@ -25,6 +22,7 @@ import { notFound } from './middleware/notFound.js';
 // Load environment variables
 dotenv.config();
 
+// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -32,6 +30,8 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // =============================================================================
 // 🔒 SECURITY MIDDLEWARE
 // =============================================================================
+
+// Helmet - Set security HTTP headers
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -43,24 +43,24 @@ app.use(helmet({
       connectSrc: ["'self'", "https://api.huggingface.co"],
     },
   },
-  crossOriginEmbedderPolicy: false,
+  crossOriginEmbedderPolicy: false, // Required for some frontend features
   crossOriginOpenerPolicy: false,
 }));
 
-// CORS - allow same origin for single deploy
+// CORS - Configure cross-origin resource sharing
 app.use(cors({
-  origin: true,
-  credentials: true,
-  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','X-Requested-With'],
-  exposedHeaders: ['X-Total-Count','X-Page-Count'],
-  maxAge: 86400
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true, // Allow cookies to be sent
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
+  maxAge: 86400, // Cache preflight requests for 24 hours
 }));
 
-// Rate Limiting
+// Rate Limiting - Prevent API abuse
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: NODE_ENV === 'production' ? 100 : 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // More lenient in dev
   message: {
     success: false,
     message: 'Too many requests, please try again in 15 minutes',
@@ -73,22 +73,38 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // =============================================================================
-// 📊 PARSING & LOGGING
+// 📊 PARSING & LOGGING MIDDLEWARE
 // =============================================================================
-app.use(cookieParser());
-app.use(express.json({ limit: '10mb', strict: true, type: ['application/json','application/csp-report'] }));
-app.use(express.urlencoded({ extended: true, limit: '10mb', parameterLimit: 1000 }));
 
-if(NODE_ENV === 'development') {
+// Cookie Parser - Parse cookies for JWT authentication
+app.use(cookieParser());
+
+// Body Parser - Parse JSON and URL-encoded data
+app.use(express.json({ 
+  limit: '10mb',
+  strict: true,
+  type: ['application/json', 'application/csp-report']
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb',
+  parameterLimit: 1000
+}));
+
+// Morgan - HTTP request logging
+if (NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
+  // Custom format for production logging
   app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" :response-time ms'));
 }
 
 // =============================================================================
 // 🗂️ API ROUTES
 // =============================================================================
-app.get('/api/health', (req,res) => {
+
+// Health check endpoint (for monitoring & load balancers)
+app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
     service: 'CommunityPulse API',
@@ -100,34 +116,32 @@ app.get('/api/health', (req,res) => {
   });
 });
 
+// Mount route handlers
 app.use('/api/auth', authRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // =============================================================================
-// ⚠️ ERROR HANDLING
+// ⚠️ ERROR HANDLING MIDDLEWARE
 // =============================================================================
+
+// 404 Handler - Route not found
 app.use(notFound);
+
+// Global Error Handler
 app.use(errorHandler);
-
-// =============================================================================
-// 🌐 SERVE FRONTEND (React SPA) - MUST BE LAST
-// =============================================================================
-const __dirname = path.resolve();
-app.use(express.static(path.join(__dirname, "../client/dist")));
-
-app.get("*", (req,res) => {
-  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
-});
 
 // =============================================================================
 // 🚀 SERVER STARTUP
 // =============================================================================
+
 const startServer = async () => {
   try {
+    // Connect to MongoDB
     await connectDB();
     console.log('✅ MongoDB connected successfully');
 
+    // Start Express server
     const server = app.listen(PORT, () => {
       console.log(`
 ╔═══════════════════════════════════════════════════════════╗
@@ -159,6 +173,7 @@ const startServer = async () => {
         }
       });
 
+      // Force shutdown after 10 seconds
       setTimeout(() => {
         console.error('❌ Forced shutdown due to timeout');
         process.exit(1);
@@ -167,10 +182,14 @@ const startServer = async () => {
 
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    // Handle uncaught exceptions
     process.on('uncaughtException', (error) => {
       console.error('❌ Uncaught Exception:', error);
       gracefulShutdown('uncaughtException');
     });
+
+    // Handle unhandled promise rejections
     process.on('unhandledRejection', (reason, promise) => {
       console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
       gracefulShutdown('unhandledRejection');
@@ -182,6 +201,8 @@ const startServer = async () => {
   }
 };
 
+// Start the server
 startServer();
 
+// Export app for testing
 export default app;
