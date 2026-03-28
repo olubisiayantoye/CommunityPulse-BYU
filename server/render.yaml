@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: community-pulse-api
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false  # Set in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: HF_API_TOKEN
+        sync: false  # Get from huggingface.co/settings/tokens
+      - key: CLIENT_URL
+        value: https://community-pulse-app.onrender.com
+
+  - type: pserv
+    name: community-pulse-db
+    plan: free
+    env: mongodb
+    databaseName: community_pulse
+    user: cp_user
+    # Connection string auto-injected as MONGODB_URI in web service
