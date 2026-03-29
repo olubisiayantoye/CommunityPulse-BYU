@@ -201,3 +201,14 @@ community-pulse-byu/<br>
 ├── .gitignore<br>
 ├── README.md<br>
 └── LICENSE<br>
+
+
+👥 Team Members
+
+Name	         Role	                                    GitHub
+Favourite Atuhu	 Full-Stack Developer(QA & Documentation  )	@ohayitsfay
+Olubisi Ayantoye Full-Stack Developer    	                 -
+Adedeji Usman	 Frontend Developer	                          -
+Azeez Daniel	 Backend Developer	                          -
+John Idorot	     DevOps & Database	                           -
+
