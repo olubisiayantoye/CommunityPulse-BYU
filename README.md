@@ -124,3 +124,80 @@ Demonstrate professional software engineering practices by building a production
 ---
 
 ## 📁 Project Structure
+community-pulse-byu/
+├── client/ # React Frontend (Vite)
+│ ├── public/
+│ │ ├── vite.svg
+│ │ └── _redirects # SPA routing for Netlify/Vercel
+│ ├── src/
+│ │ ├── components/
+│ │ │ ├── ui/ # Reusable UI components
+│ │ │ │ ├── Button.jsx
+│ │ │ │ ├── Card.jsx
+│ │ │ │ ├── Badge.jsx
+│ │ │ │ └── LoadingSpinner.jsx
+│ │ │ └── layout/
+│ │ │ ├── Header.jsx
+│ │ │ └── ProtectedRoute.jsx
+│ │ ├── context/
+│ │ │ └── AuthContext.jsx
+│ │ ├── pages/
+│ │ │ ├── LandingPage.jsx
+│ │ │ ├── Login.jsx
+│ │ │ ├── Register.jsx
+│ │ │ ├── Dashboard.jsx
+│ │ │ ├── FeedbackBrowser.jsx
+│ │ │ ├── SubmitFeedback.jsx
+│ │ │ ├── Profile.jsx
+│ │ │ └── AdminPanel.jsx
+│ │ ├── services/
+│ │ │ ├── api.js
+│ │ │ ├── authService.js
+│ │ │ ├── feedbackService.js
+│ │ │ └── analyticsService.js
+│ │ ├── utils/
+│ │ │ ├── constants.js
+│ │ │ └── helpers.js
+│ │ ├── App.jsx
+│ │ ├── main.jsx
+│ │ └── index.css
+│ ├── index.html
+│ ├── package.json
+│ ├── vite.config.js
+│ ├── tailwind.config.js
+│ ├── postcss.config.js
+│ └── .env
+│
+├── server/ # Node.js Backend (Express)
+│ ├── config/
+│ │ ├── db.js # MongoDB connection
+│ │ └── hf-api.js # Hugging Face API client
+│ ├── controllers/
+│ │ ├── authController.js
+│ │ ├── feedbackController.js
+│ │ └── analyticsController.js
+│ ├── middleware/
+│ │ ├── auth.js # JWT authentication
+│ │ ├── validate.js # Request validation
+│ │ ├── errorHandler.js # Global error handler
+│ │ └── rateLimit.js # API rate limiting
+│ ├── models/
+│ │ ├── User.js
+│ │ ├── Feedback.js
+│ │ └── AuditLog.js
+│ ├── routes/
+│ │ ├── authRoutes.js
+│ │ ├── feedbackRoutes.js
+│ │ └── analyticsRoutes.js
+│ ├── scripts/
+│ │ └── seedData.js # Database seeder
+│ ├── utils/
+│ │ └── sentimentAnalyzer.js
+│ ├── server.js # Express entry point
+│ ├── package.json
+│ ├── .env.example
+│ └── render.yaml # Render.com deployment config
+│
+├── .gitignore
+├── README.md
+└── LICENSE
