@@ -124,10 +124,10 @@ Demonstrate professional software engineering practices by building a production
 ---
 
 ## 📁 Project Structure
-community-pulse-byu/
-├── client/ # React Frontend (Vite)
-│ ├── public/
-│ │ ├── vite.svg
+community-pulse-byu/..
+├── client/ # React Frontend (Vite)..
+│ ├── public/..
+│ │ ├── vite.svg..
 │ │ └── _redirects # SPA routing for Netlify/Vercel
 │ ├── src/
 │ │ ├── components/
