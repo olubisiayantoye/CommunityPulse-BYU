@@ -205,10 +205,10 @@ community-pulse-byu/<br>
 
 👥 Team Members
 
-Name	         Role	                                    GitHub
-Favourite Atuhu	 Full-Stack Developer(QA & Documentation  )	@ohayitsfay
-Olubisi Ayantoye Full-Stack Developer    	                 -
-Adedeji Usman	 Frontend Developer	                          -
-Azeez Daniel	 Backend Developer	                          -
-John Idorot	     DevOps & Database	                           -
+Name	         Role	                                    GitHub<br>
+Favourite Atuhu	 Full-Stack Developer(QA & Documentation  )	@ohayitsfay<br>
+Olubisi Ayantoye Full-Stack Developer    	                 -<br>
+Adedeji Usman	 Frontend Developer	                          -<br>
+Azeez Daniel	 Backend Developer	                          -<br>
+John Idorot	     DevOps & Database	                           -<br>
 
