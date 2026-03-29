@@ -29,33 +29,3 @@ body {
    CUSTOM HEADER STYLES - Mobile Menu Fix
    ============================================================================= */
 
-/* Mobile menu button - always visible on mobile */
-/* Default (Desktop) */
-.mobile-menu-btn {
-  display: none;
-}
-
-.desktop-nav,
-.desktop-buttons {
-  display: flex;
-}
-
-/* Mobile */
-@media (max-width: 767px) {
-  .mobile-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: #475569;
-    z-index: 100;
-  }
-
-  .desktop-nav,
-  .desktop-buttons {
-    display: none;
-  }
-}
