@@ -213,3 +213,18 @@ community-pulse-byu/<br>
 | Azeez Daniel	|  Backend Developer	  |                      |    -| 
 | John Idorot	|     DevOps & Database	   |                     |     -| 
 
+
+
+💬 Inspirational Quotes
+Olubisi Ayantoye
+"The beauty of life does not depend on how happy you are, but on how happy others can be because of you."
+DJ Idorot
+"It is so important that you young men and you young women get all of the education that you can. The Lord has said very plainly that His people are to gain knowledge of countries and kingdoms and of things of the world through the process of education, even by study and by faith. Education is the key which will unlock the door of opportunity for you. It is worth sacrificing for. It is worth working at, and if you educate your mind and your hands, you will be able to make a great contribution to the society of which you are a part, and you will be able to reflect honorably on the Church of which you are a member. My dear young brothers and sisters, take advantage of every educational opportunity that you can possibly afford, and you fathers and mothers, encourage your sons and daughters to gain an education, which will bless their lives."
+— Gordon B. Hinckley
+Favourite's Favorite Quote
+"Success is not final, failure is not fatal: it is the courage to continue that counts."
+— Winston Churchill
+Adedeji's Favorite Quote
+"The Lord doesn't require you to succeed; He only requires you to try."
+— Thomas S. Monson
+
