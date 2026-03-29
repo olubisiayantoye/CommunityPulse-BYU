@@ -4,7 +4,7 @@ import { Menu, X, MessageSquare, User, LogOut, ChevronDown } from 'lucide-react'
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { useAuth } from '../../context/AuthContext';
-import '../styles/header.css'; // Optional: if you want separate CSS file
+//import '../styles/header.css'; // Optional: if you want separate CSS file
 
 const Header = () => {
   const { user, logout: authLogout, isAuthenticated } = useAuth();
