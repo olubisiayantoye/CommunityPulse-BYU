@@ -30,13 +30,20 @@ body {
    ============================================================================= */
 
 /* Mobile menu button - always visible on mobile */
+/* Default (Desktop) */
 .mobile-menu-btn {
-  display: none !important;
+  display: none;
 }
 
+.desktop-nav,
+.desktop-buttons {
+  display: flex;
+}
+
+/* Mobile */
 @media (max-width: 767px) {
   .mobile-menu-btn {
-    display: flex !important;
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 8px;
@@ -46,125 +53,9 @@ body {
     color: #475569;
     z-index: 100;
   }
-  
-  .mobile-menu-btn:hover {
-    background: #f1f5f9;
-    border-radius: 8px;
-  }
-}
 
-/* Hide desktop nav on mobile */
-.desktop-nav {
-  display: flex !important;
-}
-
-@media (max-width: 767px) {
-  .desktop-nav {
-    display: none !important;
-  }
-}
-
-/* Hide desktop buttons on mobile */
-.desktop-buttons {
-  display: flex !important;
-}
-
-@media (max-width: 767px) {
+  .desktop-nav,
   .desktop-buttons {
-    display: none !important;
-  }
-}
-
-/* Mobile menu panel */
-.mobile-menu-panel {
-  display: none;
-  position: fixed;
-  top: 64px;
-  left: 0;
-  right: 0;
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  z-index: 99;
-  max-height: calc(100vh - 64px);
-  overflow-y: auto;
-}
-
-.mobile-menu-panel.active {
-  display: block;
-  animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Mobile menu links */
-.mobile-menu-link {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  margin: 4px 0;
-  border-radius: 8px;
-  text-decoration: none;
-  color: #475569;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.mobile-menu-link:hover {
-  background: #f1f5f9;
-  color: #4f46e5;
-}
-
-.mobile-menu-link.active {
-  background: #eef2ff;
-  color: #4338ca;
-}
-
-/* Mobile menu backdrop */
-.mobile-menu-backdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 98;
-}
-
-.mobile-menu-backdrop.active {
-  display: block;
-}
-
-/* Header container */
-.header-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 64px;
-  padding: 0 16px;
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-/* Logo */
-.header-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  flex-shrink: 0;
-}
-
-/* Logo text - hide on small mobile */
-@media (max-width: 400px) {
-  .header-logo-text {
-    display: none !important;
+    display: none;
   }
 }
