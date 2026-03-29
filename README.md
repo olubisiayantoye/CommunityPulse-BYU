@@ -124,80 +124,80 @@ Demonstrate professional software engineering practices by building a production
 ---
 
 ## 📁 Project Structure
-community-pulse-byu/..
+community-pulse-byu/<br>
 ├── client/ # React Frontend (Vite)<br>
 │ ├── public/<br>
 │ │ ├── vite.svg<br>
-│ │ └── _redirects # SPA routing for Netlify/Vercel
-│ ├── src/
-│ │ ├── components/
-│ │ │ ├── ui/ # Reusable UI components
-│ │ │ │ ├── Button.jsx
-│ │ │ │ ├── Card.jsx
-│ │ │ │ ├── Badge.jsx
-│ │ │ │ └── LoadingSpinner.jsx
-│ │ │ └── layout/
-│ │ │ ├── Header.jsx
-│ │ │ └── ProtectedRoute.jsx
-│ │ ├── context/
-│ │ │ └── AuthContext.jsx
-│ │ ├── pages/
-│ │ │ ├── LandingPage.jsx
-│ │ │ ├── Login.jsx
-│ │ │ ├── Register.jsx
-│ │ │ ├── Dashboard.jsx
-│ │ │ ├── FeedbackBrowser.jsx
-│ │ │ ├── SubmitFeedback.jsx
-│ │ │ ├── Profile.jsx
-│ │ │ └── AdminPanel.jsx
-│ │ ├── services/
-│ │ │ ├── api.js
-│ │ │ ├── authService.js
-│ │ │ ├── feedbackService.js
-│ │ │ └── analyticsService.js
-│ │ ├── utils/
-│ │ │ ├── constants.js
-│ │ │ └── helpers.js
-│ │ ├── App.jsx
-│ │ ├── main.jsx
-│ │ └── index.css
-│ ├── index.html
-│ ├── package.json
-│ ├── vite.config.js
-│ ├── tailwind.config.js
-│ ├── postcss.config.js
-│ └── .env
+│ │ └── _redirects # SPA routing for Netlify/Vercel<br>
+│ ├── src/<br>
+│ │ ├── components/<br>
+│ │ │ ├── ui/ # Reusable UI components<br>
+│ │ │ │ ├── Button.jsx<br>
+│ │ │ │ ├── Card.jsx<br>
+│ │ │ │ ├── Badge.jsx<br>
+│ │ │ │ └── LoadingSpinner.jsx<br>
+│ │ │ └── layout/<br>
+│ │ │ ├── Header.jsx<br>
+│ │ │ └── ProtectedRoute.jsx<br>
+│ │ ├── context/<br>
+│ │ │ └── AuthContext.jsx<br>
+│ │ ├── pages/<br>
+│ │ │ ├── LandingPage.jsx<br>
+│ │ │ ├── Login.jsx<br>
+│ │ │ ├── Register.jsx<br>
+│ │ │ ├── Dashboard.jsx<br>
+│ │ │ ├── FeedbackBrowser.jsx<br>
+│ │ │ ├── SubmitFeedback.jsx<br>
+│ │ │ ├── Profile.jsx<br>
+│ │ │ └── AdminPanel.jsx<br>
+│ │ ├── services/<br>
+│ │ │ ├── api.js<br>
+│ │ │ ├── authService.js<br>
+│ │ │ ├── feedbackService.js<br>
+│ │ │ └── analyticsService.js<br>
+│ │ ├── utils/<br>
+│ │ │ ├── constants.js<br>
+│ │ │ └── helpers.js<br>
+│ │ ├── App.jsx<br>
+│ │ ├── main.jsx<br>
+│ │ └── index.css<br>
+│ ├── index.html<br>
+│ ├── package.json<br>
+│ ├── vite.config.js<br>
+│ ├── tailwind.config.js<br>
+│ ├── postcss.config.js<br>
+│ └── .env<br>
+│<br>
+├── server/ # Node.js Backend (Express)<br>
+│ ├── config/<br>
+│ │ ├── db.js # MongoDB connection<br>
+│ │ └── hf-api.js # Hugging Face API client<br>
+│ ├── controllers/<br>
+│ │ ├── authController.js<br>
+│ │ ├── feedbackController.js<br>
+│ │ └── analyticsController.js<br>
+│ ├── middleware/<br>
+│ │ ├── auth.js # JWT authentication<br>
+│ │ ├── validate.js # Request validation<br>
+│ │ ├── errorHandler.js # Global error handler<br>
+│ │ └── rateLimit.js # API rate limiting<br>
+│ ├── models/<br>
+│ │ ├── User.js<br>
+│ │ ├── Feedback.js<br>
+│ │ └── AuditLog.js<br>
+│ ├── routes/<br>
+│ │ ├── authRoutes.js<br>
+│ │ ├── feedbackRoutes.js<br>
+│ │ └── analyticsRoutes.js<br>
+│ ├── scripts/<br>
+│ │ └── seedData.js # Database seeder<br>
+│ ├── utils/<br>
+│ │ └── sentimentAnalyzer.js<br>
+│ ├── server.js # Express entry point<br>
+│ ├── package.json<br>
+│ ├── .env.example<br>
+│ └── render.yaml # Render.com deployment config<br>
 │
-├── server/ # Node.js Backend (Express)
-│ ├── config/
-│ │ ├── db.js # MongoDB connection
-│ │ └── hf-api.js # Hugging Face API client
-│ ├── controllers/
-│ │ ├── authController.js
-│ │ ├── feedbackController.js
-│ │ └── analyticsController.js
-│ ├── middleware/
-│ │ ├── auth.js # JWT authentication
-│ │ ├── validate.js # Request validation
-│ │ ├── errorHandler.js # Global error handler
-│ │ └── rateLimit.js # API rate limiting
-│ ├── models/
-│ │ ├── User.js
-│ │ ├── Feedback.js
-│ │ └── AuditLog.js
-│ ├── routes/
-│ │ ├── authRoutes.js
-│ │ ├── feedbackRoutes.js
-│ │ └── analyticsRoutes.js
-│ ├── scripts/
-│ │ └── seedData.js # Database seeder
-│ ├── utils/
-│ │ └── sentimentAnalyzer.js
-│ ├── server.js # Express entry point
-│ ├── package.json
-│ ├── .env.example
-│ └── render.yaml # Render.com deployment config
-│
-├── .gitignore
-├── README.md
-└── LICENSE
+├── .gitignore<br>
+├── README.md<br>
+└── LICENSE<br>
