@@ -222,3 +222,7 @@ Each team member contributes through GitHub using commits and pull requests. All
 ## Olubisi Ayantoye's Quote
 "The beauty of life does not depend on how happy you are, but on how happy others can be because of you."
 
+## Adedeji Favorite Quote
+"The Lord doesn't require you to succeed; He only requires you to try."
+- Thomas S. Monson
+
