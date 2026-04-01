@@ -224,3 +224,8 @@ Each team member contributes through GitHub using commits and pull requests. All
 
 ## Favourite Atuhu's  Quote
 "Success is not final failure is not fatal it is the courage to continue that counts."
+
+## Adedeji Favorite Quote
+"The Lord doesn't require you to succeed; He only requires you to try."
+- Thomas S. Monson
+
