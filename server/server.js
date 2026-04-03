@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { v2 as cloudinary } from 'cloudinary';
+import fs from 'fs';
 import path from 'path';
 import mongoose from 'mongoose';
 
@@ -107,18 +108,27 @@ app.use('/api/analytics', analyticsRoutes);
 // =============================================================================
 // ⚠️ ERROR HANDLING
 // =============================================================================
-app.use(notFound);
-app.use(errorHandler);
 
 // =============================================================================
 // 🌐 SERVE FRONTEND (React SPA) - MUST BE LAST
 // =============================================================================
 const __dirname = path.resolve();
-app.use(express.static(path.join(__dirname, "../client/dist")));
+const clientDistPath = path.join(__dirname, '../client/dist');
+const clientIndexPath = path.join(clientDistPath, 'index.html');
+if (fs.existsSync(clientIndexPath)) {
+  app.use(express.static(clientDistPath));
 
-app.get("*", (req,res) => {
-  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
-});
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+
+    res.sendFile(clientIndexPath);
+  });
+}
+
+app.use(notFound);
+app.use(errorHandler);
 
 // =============================================================================
 // 🚀 SERVER STARTUP

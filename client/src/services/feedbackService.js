@@ -35,6 +35,16 @@ export const getMyFeedback = async (params = {}) => {
   return response.data;
 };
 
+export const getFeedbackById = async (id) => {
+  const response = await api.get(`/feedback/${id}`);
+  return response.data;
+};
+
+export const getFeedbackStats = async () => {
+  const response = await api.get('/feedback/public/stats');
+  return response.data;
+};
+
 export default {
   submitFeedback,
   getFeedback,
@@ -42,5 +52,7 @@ export default {
   deleteFeedback,
   upvoteFeedback,
   removeUpvote,
-  getMyFeedback
+  getMyFeedback,
+  getFeedbackById,
+  getFeedbackStats
 };

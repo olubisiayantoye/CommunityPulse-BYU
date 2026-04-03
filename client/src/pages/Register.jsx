@@ -77,10 +77,16 @@ const Register = () => {
       }
 
       // Auto-login after registration
-      authLogin(response.data.user, response.data.token);
-      navigate('/dashboard', { replace: true });
+      if (response.user && response.token) {
+        authLogin(response.user, response.token);
+        navigate('/dashboard', { replace: true });
+      }
       
     } catch (err) {
+      if (err.response?.data?.requiresVerification) {
+        setRequiresVerification(true);
+        return;
+      }
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);

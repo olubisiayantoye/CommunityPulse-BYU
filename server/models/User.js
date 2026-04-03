@@ -87,6 +87,8 @@ const userSchema = new mongoose.Schema({
   },
   passwordResetToken: String,
   passwordResetExpires: Date,
+  verificationToken: String,
+  verificationTokenExpires: Date,
   
   // 📊 Activity Tracking (for analytics & audit)
   feedbackCount: {
@@ -245,7 +247,7 @@ userSchema.methods.toPublicJSON = function() {
 
 // 🔄 Method: Update profile (with validation)
 userSchema.methods.updateProfile = async function(updates) {
-  const allowedUpdates = ['name', 'bio', 'avatar', 'preferences'];
+  const allowedUpdates = ['name', 'bio', 'avatar', 'preferences', 'organization'];
   const sanitized = Object.keys(updates)
     .filter(key => allowedUpdates.includes(key))
     .reduce((obj, key) => {

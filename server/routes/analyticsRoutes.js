@@ -9,6 +9,10 @@ import {
   getComparisonAnalytics
 } from '../controllers/analyticsController.js';
 import { protect, authorize } from '../middleware/auth.js';
+import {
+  validateAnalyticsQuery,
+  validateCategoryParams
+} from '../middleware/validate.js';
 
 const router = express.Router();
 
@@ -19,6 +23,7 @@ router.use(protect);
 router.get(
   '/dashboard',
   authorize('admin', 'moderator'),
+  validateAnalyticsQuery,
   getDashboardAnalytics
 );
 
@@ -26,6 +31,7 @@ router.get(
 router.get(
   '/sentiment',
   authorize('admin', 'moderator'),
+  validateAnalyticsQuery,
   getSentimentTrends
 );
 
@@ -33,6 +39,8 @@ router.get(
 router.get(
   '/category/:category',
   authorize('admin', 'moderator'),
+  validateCategoryParams,
+  validateAnalyticsQuery,
   getCategoryAnalytics
 );
 
@@ -40,6 +48,7 @@ router.get(
 router.get(
   '/export',
   authorize('admin', 'moderator'),
+  validateAnalyticsQuery,
   exportAnalytics
 );
 
@@ -47,6 +56,7 @@ router.get(
 router.get(
   '/alerts',
   authorize('admin', 'moderator'),
+  validateAnalyticsQuery,
   getPriorityAlerts
 );
 
@@ -54,6 +64,7 @@ router.get(
 router.get(
   '/engagement',
   authorize('admin', 'moderator'),
+  validateAnalyticsQuery,
   getUserEngagement
 );
 
@@ -61,6 +72,7 @@ router.get(
 router.get(
   '/comparison',
   authorize('admin', 'moderator'),
+  validateAnalyticsQuery,
   getComparisonAnalytics
 );
 

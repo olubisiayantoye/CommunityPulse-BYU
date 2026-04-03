@@ -9,9 +9,16 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import ResendVerification from './pages/ResendVerification';
+import VerifyEmail from './pages/VerifyEmail';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import Dashboard from './pages/Dashboard';
 import SubmitFeedback from './pages/SubmitFeedback';
 import FeedbackBrowser from './pages/FeedbackBrowser';
+import FeedbackDetail from './pages/FeedbackDetail';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import ForgotPassword from './pages/ForgotPassword';
@@ -43,6 +50,12 @@ function App() {
         <Route path="/register" element={
           isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />
         } />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/resend-verification" element={<ResendVerification />} />
+        <Route path="/verify-email/:token" element={<VerifyEmail />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         
         {/* Protected */}
         <Route path="/dashboard" element={
@@ -53,6 +66,9 @@ function App() {
         } />
         <Route path="/feedback" element={
           <ProtectedRoute><FeedbackBrowser /></ProtectedRoute>
+        } />
+        <Route path="/feedback/:id" element={
+          <ProtectedRoute><FeedbackDetail /></ProtectedRoute>
         } />
         <Route path="/profile" element={
           <ProtectedRoute><Profile /></ProtectedRoute>
