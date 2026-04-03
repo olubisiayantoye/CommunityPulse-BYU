@@ -21,10 +21,6 @@ import FeedbackBrowser from './pages/FeedbackBrowser';
 import FeedbackDetail from './pages/FeedbackDetail';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-
-
 
 function App() {
   const { isAuthenticated, user, loading } = useAuth();
@@ -50,8 +46,12 @@ function App() {
         <Route path="/register" element={
           isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />
         } />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPassword />
+        } />
+        <Route path="/reset-password/:token" element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <ResetPassword />
+        } />
         <Route path="/resend-verification" element={<ResendVerification />} />
         <Route path="/verify-email/:token" element={<VerifyEmail />} />
         <Route path="/terms" element={<TermsOfService />} />
@@ -75,13 +75,6 @@ function App() {
         } />
         <Route path="/admin" element={
           <ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>
-        } />
-
-        <Route path="/forgot-password" element={
-        isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPassword />
-        } />
-        <Route path="/reset-password/:token" element={
-        isAuthenticated ? <Navigate to="/dashboard" replace /> : <ResetPassword />
         } />
 
         {/* Catch-all */}
