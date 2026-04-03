@@ -219,6 +219,6 @@ community-pulse-byu/<br>
 
 Each team member contributes through GitHub using commits and pull requests. All code changes should include clear commit messages and follow clean coding practices.
 
-## Olubisi Ayantoye's Quote
+## Olubisi Ayantoye's Ouote
 "The beauty of life does not depend on how happy you are, but on how happy others can be because of you."
 
