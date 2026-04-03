@@ -229,3 +229,24 @@ Each team member contributes through GitHub using commits and pull requests. All
 "The Lord doesn't require you to succeed; He only requires you to try."
 - Thomas S. Monson
 
+
+---
+
+## 🚀 Quick Start
+```bash
+# 1. Clone & install
+git clone hhttps://github.com/olubisiayantoye/CommunityPulse-BYU.git
+cd communitypulse
+
+# 2. Backend setup
+cd server
+npm install
+cp .env.example .env  # Add MONGODB_URI, JWT_SECRET, HF_API_TOKEN
+npm run seed          # Optional: load sample data
+npm run dev           # http://localhost:5000
+
+# 3. Frontend setup (new terminal)
+cd ../client
+npm install
+cp .env.example .env  # Set VITE_API_URL=http://localhost:5000/api
+npm run dev           # http://localhost:5173
