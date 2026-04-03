@@ -55,4 +55,46 @@ export const updateProfile = async (profileData) => {
   return response.data;
 };
 
+export const changePassword = async (passwordData) => {
+  const response = await api.put('/auth/me/change-password', passwordData);
+  return response.data;
+};
+
+
+export const forgotPassword = async (email) => {
+  const response = await api.post('/auth/forgot-password', { email });
+  return response.data;
+};
+
+export const resetPassword = async (token, newPassword) => {
+  const response = await api.post('/auth/reset-password', { token, newPassword });
+  return response.data;
+};
+// ===========================
+
+export const verifyEmail = async (token) => {
+  const response = await api.get(`/auth/verify-email/${token}`);
+  if (response.data?.data?.token) {
+    localStorage.setItem('token', response.data.data.token);
+  }
+  return response.data;
+};
+
+export const resendVerification = async (email) => {
+  const response = await api.post('/auth/resend-verification', { email });
+  return response.data;
+};
+
+export const deleteAccount = async (password) => {
+  const response = await api.delete('/auth/me', {
+    data: { password, confirmDelete: true }
+  });
+  if (response.data?.success) {
+    localStorage.removeItem('token');
+  }
+  return response.data;
+};
+
+
+
 export default api;
