@@ -435,4 +435,7 @@ router.use((req, res) => {
   });
 });
 
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
+
 export default router;

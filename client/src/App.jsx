@@ -14,6 +14,10 @@ import SubmitFeedback from './pages/SubmitFeedback';
 import FeedbackBrowser from './pages/FeedbackBrowser';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+
+
 
 function App() {
   const { isAuthenticated, user, loading } = useAuth();
@@ -56,7 +60,14 @@ function App() {
         <Route path="/admin" element={
           <ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>
         } />
-        
+
+        <Route path="/forgot-password" element={
+        isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPassword />
+        } />
+        <Route path="/reset-password/:token" element={
+        isAuthenticated ? <Navigate to="/dashboard" replace /> : <ResetPassword />
+        } />
+
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
