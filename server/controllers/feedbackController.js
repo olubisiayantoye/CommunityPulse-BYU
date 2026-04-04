@@ -1,4 +1,5 @@
 import Feedback from '../models/Feedback.js';
+import AuditLog from '../models/AuditLog.js';
 import { analyzeSentiment } from '../config/hf-api.js';
 import { validationResult } from 'express-validator';
 
@@ -21,6 +22,23 @@ const extractKeywords = (text, maxKeywords = 5) => {
     .sort((a, b) => b[1] - a[1])
     .slice(0, maxKeywords)
     .map(([word]) => word);
+};
+
+const recordAuditLog = async (req, payload) => {
+  try {
+    await AuditLog.record({
+      actor: req.user?._id || null,
+      action: payload.action,
+      targetType: payload.targetType || 'Feedback',
+      targetId: payload.targetId || null,
+      details: payload.details || {},
+      ipAddress: req.ip || null,
+      userAgent: req.get('user-agent') || null,
+      severity: payload.severity || 'info'
+    });
+  } catch (error) {
+    console.error('Audit log write failed:', error);
+  }
 };
 
 // =============================================================================
@@ -50,6 +68,17 @@ export const createFeedback = async (req, res) => {
       keywords,
       isAnonymous,
       submittedBy: isAnonymous ? null : req.user._id
+    });
+
+    await recordAuditLog(req, {
+      action: 'feedback.created',
+      targetId: feedback._id,
+      details: {
+        category: feedback.category,
+        isAnonymous: feedback.isAnonymous,
+        status: feedback.status,
+        submittedBy: feedback.submittedBy
+      }
     });
 
     res.status(201).json({
@@ -160,6 +189,7 @@ export const updateFeedback = async (req, res) => {
     const { status, adminNote, content } = req.body;
 
     const feedback = await Feedback.findById(id);
+    const previousStatus = feedback?.status || null;
 
     if (!feedback) {
       return res.status(404).json({ 
@@ -215,6 +245,22 @@ export const updateFeedback = async (req, res) => {
     feedback.updatedAt = Date.now();
     await feedback.save();
 
+    await recordAuditLog(req, {
+      action:
+        req.user.role === 'member'
+          ? 'feedback.updated'
+          : 'feedback.status_updated',
+      targetId: feedback._id,
+      details: {
+        previousStatus,
+        newStatus: feedback.status || null,
+        note: adminNote || null,
+        contentUpdated: Boolean(content),
+        category: feedback.category
+      },
+      severity: adminNote ? 'warning' : 'info'
+    });
+
     res.json({ success: true, data: { feedback } });
   } catch (error) {
     console.error('❌ Update Feedback Error:', error);
@@ -246,9 +292,21 @@ export const deleteFeedback = async (req, res) => {
     }
 
     // Soft delete by setting status to Dismissed
+    const previousStatus = feedback.status || null;
     feedback.status = 'Dismissed';
     feedback.updatedAt = Date.now();
     await feedback.save();
+
+    await recordAuditLog(req, {
+      action: 'feedback.archived',
+      targetId: feedback._id,
+      details: {
+        previousStatus,
+        newStatus: feedback.status,
+        category: feedback.category
+      },
+      severity: 'warning'
+    });
 
     res.json({ 
       success: true, 

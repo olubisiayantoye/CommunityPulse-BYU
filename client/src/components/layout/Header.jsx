@@ -17,7 +17,19 @@ const Header = () => {
     navigate('/login');
   };
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    const [pathname, hash = ''] = path.split('#');
+
+    if (location.pathname !== pathname) {
+      return false;
+    }
+
+    if (!hash) {
+      return !location.hash || pathname !== '/admin';
+    }
+
+    return location.hash === `#${hash}`;
+  };
 
   const navLinks = [
     { label: 'Dashboard', path: '/dashboard', icon: BarChart3 },

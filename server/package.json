@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server.js",                         
+    "start": "node server.js",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "nodemon server.js",
     "dev:client": "cd ../client && npm run dev",
@@ -24,6 +24,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.2.0",
     "morgan": "^1.10.0",
+    "nodemailer": "^8.0.4",
     "winston": "^3.11.0"
   },
   "devDependencies": {

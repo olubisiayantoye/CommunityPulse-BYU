@@ -1,4 +1,5 @@
 import Feedback from '../models/Feedback.js';
+import AuditLog from '../models/AuditLog.js';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
 
@@ -532,6 +533,159 @@ export const getUserEngagement = async (req, res) => {
     });
   }
 };
+
+// =============================================================================
+// AUDIT LOGS
+// Surface recent audit activity for admins
+// =============================================================================
+
+export const getAuditLogs = async (req, res) => {
+  try {
+    const {
+      limit = 20,
+      action,
+      targetType,
+      severity,
+      actor,
+      hasNote = 'all',
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const query = {};
+
+    if (action) query.action = action;
+    if (targetType) query.targetType = targetType;
+    if (severity) query.severity = severity;
+
+    if (hasNote === 'with-note') {
+      query.$or = buildAuditNoteClauses('exists');
+    } else if (hasNote === 'without-note') {
+      query.$and = buildAuditNoteClauses('missing');
+    }
+
+    if (actor) {
+      const actorRegex = new RegExp(escapeRegExp(actor), 'i');
+      const matchingActorIds = await User.find({
+        $or: [{ name: actorRegex }, { email: actorRegex }]
+      }).distinct('_id');
+
+      query.actor = matchingActorIds.length > 0
+        ? { $in: matchingActorIds }
+        : { $in: [] };
+    }
+
+    const sortFieldMap = {
+      createdAt: 'createdAt',
+      action: 'action',
+      severity: 'severity',
+      targetType: 'targetType'
+    };
+
+    const sortField = sortFieldMap[sortBy] || 'createdAt';
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+
+    const [auditLogs, total] = await Promise.all([
+      AuditLog.find(query)
+        .populate('actor', 'name email role')
+        .sort({ [sortField]: sortDirection, _id: sortDirection })
+        .limit(parseInt(limit, 10))
+        .lean(),
+      AuditLog.countDocuments(query)
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        auditLogs: auditLogs.map((entry) => ({
+          _id: entry._id,
+          action: entry.action,
+          targetType: entry.targetType,
+          targetId: entry.targetId,
+          details: normalizeAuditDetails(entry.details),
+          note: extractAuditNote(entry.details),
+          severity: entry.severity || 'info',
+          createdAt: entry.createdAt,
+          changedBy: entry.actor
+            ? {
+                _id: entry.actor._id,
+                name: entry.actor.name,
+                email: entry.actor.email,
+                role: entry.actor.role
+              }
+            : null
+        })),
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Audit Logs Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching audit logs'
+    });
+  }
+};
+
+const buildAuditNoteClauses = (mode) => {
+  const notePaths = ['details.note', 'details.adminNote', 'details.noteAdded', 'details.comment'];
+
+  if (mode === 'exists') {
+    return notePaths.map((path) => ({
+      [path]: { $exists: true, $nin: [null, ''] }
+    }));
+  }
+
+  return notePaths.map((path) => ({
+    [path]: { $in: [null, ''] }
+  }));
+};
+
+const normalizeAuditDetails = (details) => {
+  if (!details || typeof details !== 'object' || Array.isArray(details)) {
+    return {};
+  }
+
+  const note = extractAuditNote(details);
+
+  return {
+    ...details,
+    note
+  };
+};
+
+const extractAuditNote = (details) => {
+  if (!details || typeof details !== 'object') {
+    return null;
+  }
+
+  const directCandidates = [
+    details.note,
+    details.adminNote,
+    details.noteAdded,
+    details.comment
+  ];
+
+  for (const candidate of directCandidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  if (Array.isArray(details.notes)) {
+    const matchingNote = details.notes.find(
+      (candidate) => typeof candidate === 'string' && candidate.trim()
+    );
+
+    if (matchingNote) {
+      return matchingNote.trim();
+    }
+  }
+
+  return null;
+};
+
+const escapeRegExp = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // =============================================================================
 // 🔧 HELPER FUNCTIONS
