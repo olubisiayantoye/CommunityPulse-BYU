@@ -26,12 +26,17 @@ const extractKeywords = (text, maxKeywords = 5) => {
 
 const recordAuditLog = async (req, payload) => {
   try {
+    const details = {
+      organization: req.user?.organization || null,
+      ...(payload.details || {})
+    };
+
     await AuditLog.record({
       actor: req.user?._id || null,
       action: payload.action,
       targetType: payload.targetType || 'Feedback',
       targetId: payload.targetId || null,
-      details: payload.details || {},
+      details,
       ipAddress: req.ip || null,
       userAgent: req.get('user-agent') || null,
       severity: payload.severity || 'info'

@@ -158,6 +158,9 @@ userSchema.pre('save', function(next) {
 
 // 🔐 Pre-find: Only return active users by default
 userSchema.pre(/^find/, function(next) {
+  if (this.getOptions().bypassActiveFilter) {
+    return next();
+  }
   this.find({ isActive: { $ne: false } });
   next();
 });
@@ -189,6 +192,18 @@ userSchema.methods.createPasswordResetToken = function() {
 // ✅ Static Method: Find user by email (case-insensitive)
 userSchema.statics.findByEmail = function(email) {
   return this.findOne({ email: email.toLowerCase() }).select('+password');
+};
+
+userSchema.statics.findIncludingInactive = function(filter = {}) {
+  return this.find(filter).setOptions({ bypassActiveFilter: true });
+};
+
+userSchema.statics.findOneIncludingInactive = function(filter = {}) {
+  return this.findOne(filter).setOptions({ bypassActiveFilter: true });
+};
+
+userSchema.statics.findByIdIncludingInactive = function(id) {
+  return this.findOne({ _id: id }).setOptions({ bypassActiveFilter: true });
 };
 
 // ✅ Static Method: Get all admins for an organization

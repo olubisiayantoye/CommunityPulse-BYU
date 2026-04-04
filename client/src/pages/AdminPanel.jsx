@@ -3,13 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Users, MessageSquare, AlertTriangle, Settings, 
   Download, RefreshCw, Eye, ScrollText, UserCircle2, Clock3, Filter, ArrowUpDown,
-  Search, ShieldAlert, FileText, Sparkles
+  Search, ShieldAlert, FileText, Sparkles, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useAuth } from '../context/AuthContext';
 import { getAuditLogs, getDashboardAnalytics, getPriorityAlerts, exportAnalytics } from '../services/analyticsService';
+import { getAdminUsers, updateAdminUser } from '../services/adminUserService';
 import { getFeedback, updateFeedback } from '../services/feedbackService';
 import toast from 'react-hot-toast';
 
@@ -35,6 +36,16 @@ const AdminPanel = () => {
   const [pendingFeedback, setPendingFeedback] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditTotal, setAuditTotal] = useState(0);
+  const [managedUsers, setManagedUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [userTotal, setUserTotal] = useState(0);
+  const [userFilters, setUserFilters] = useState({
+    search: '',
+    role: '',
+    status: 'all'
+  });
+  const [updatingUserId, setUpdatingUserId] = useState(null);
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [filters, setFilters] = useState({ category: '', status: 'Pending' });
   const [auditFilters, setAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
 
@@ -59,6 +70,12 @@ const AdminPanel = () => {
     }
   }, [user, auditFilters]);
 
+  useEffect(() => {
+    if (user?.role === 'admin' && isUserManagementOpen) {
+      fetchManagedUsers();
+    }
+  }, [user, userFilters, isUserManagementOpen]);
+
   const fetchAdminData = async () => {
     setAdminLoading(true);
     try {
@@ -78,6 +95,29 @@ const AdminPanel = () => {
     }
   };
 
+  const fetchManagedUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const requestParams = {
+        limit: 12
+      };
+
+      const trimmedSearch = userFilters.search.trim();
+      if (trimmedSearch) requestParams.search = trimmedSearch;
+      if (userFilters.role) requestParams.role = userFilters.role;
+      if (userFilters.status !== 'all') requestParams.isActive = userFilters.status === 'active';
+
+      const usersRes = await getAdminUsers(requestParams);
+      setManagedUsers(usersRes.data.users || []);
+      setUserTotal(usersRes.data.pagination?.totalItems || 0);
+    } catch (error) {
+      toast.error('Failed to load users');
+      console.error(error);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   const fetchAuditLogs = async () => {
     setAuditLoading(true);
     try {
@@ -91,6 +131,7 @@ const AdminPanel = () => {
       if (auditFilters.action) requestParams.action = auditFilters.action;
       if (auditFilters.targetType) requestParams.targetType = auditFilters.targetType;
       if (auditFilters.severity) requestParams.severity = auditFilters.severity;
+      if (user?.organization) requestParams.organization = user.organization;
 
       const trimmedActor = auditFilters.actor.trim();
       if (trimmedActor) requestParams.actor = trimmedActor;
@@ -148,9 +189,58 @@ const AdminPanel = () => {
     }
   };
 
+  const handleRoleChange = async (selectedUser, nextRole) => {
+    if (!selectedUser || nextRole === selectedUser.role) {
+      return;
+    }
+
+    setUpdatingUserId(selectedUser._id);
+    try {
+      await updateAdminUser(selectedUser._id, { role: nextRole });
+      await Promise.all([fetchManagedUsers(), fetchAuditLogs()]);
+      toast.success(`Updated ${selectedUser.name}'s role to ${nextRole}`);
+    } catch (error) {
+      toast.error('Failed to update user role');
+      console.error(error);
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleToggleUserStatus = async (selectedUser) => {
+    if (!selectedUser) {
+      return;
+    }
+
+    const nextStatus = !selectedUser.isActive;
+    const actionLabel = nextStatus ? 'reactivate' : 'deactivate';
+    const confirmed = window.confirm(
+      `Are you sure you want to ${actionLabel} ${selectedUser.name}'s account?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setUpdatingUserId(selectedUser._id);
+    try {
+      await updateAdminUser(selectedUser._id, { isActive: nextStatus });
+      await Promise.all([fetchManagedUsers(), fetchAuditLogs()]);
+      toast.success(`${selectedUser.name} was ${nextStatus ? 'reactivated' : 'deactivated'}`);
+    } catch (error) {
+      toast.error(`Failed to ${actionLabel} account`);
+      console.error(error);
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
   const filteredPendingFeedback = pendingFeedback.filter((fb) => (
     !filters.category || fb.category === filters.category
   ));
+
+  const activeUsersCount = managedUsers.filter((managedUser) => managedUser.isActive).length;
+  const inactiveUsersCount = managedUsers.filter((managedUser) => !managedUser.isActive).length;
 
   if (adminLoading) {
     return (
@@ -217,6 +307,162 @@ const AdminPanel = () => {
             icon={<Settings className="w-6 h-6 text-green-600" />}
           />
         </div>
+
+        <Card className="mb-6 overflow-hidden border-slate-200/80 shadow-sm">
+          <CardHeader className="flex flex-col gap-4 border-b border-slate-200 bg-white lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Admin User Management</h3>
+              <p className="text-sm text-slate-500">
+                Search all users, change roles, and deactivate or reactivate accounts.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="primary">{userTotal} users</Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsUserManagementOpen((prev) => !prev)}
+              >
+                {isUserManagementOpen ? <ChevronUp className="mr-1 h-4 w-4" /> : <ChevronDown className="mr-1 h-4 w-4" />}
+                {isUserManagementOpen ? 'Collapse' : 'Expand to view'}
+              </Button>
+            </div>
+          </CardHeader>
+          {isUserManagementOpen ? (
+          <CardContent className="bg-slate-50/70">
+            <div className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.5fr)_180px_180px_auto]">
+              <label className="block">
+                <span className="mb-1 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <Search className="w-3.5 h-3.5" />
+                  Search Users
+                </span>
+                <input
+                  type="text"
+                  value={userFilters.search}
+                  onChange={(e) => setUserFilters((prev) => ({ ...prev, search: e.target.value }))}
+                  placeholder="Search by name or email"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Role</span>
+                <select
+                  value={userFilters.role}
+                  onChange={(e) => setUserFilters((prev) => ({ ...prev, role: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="">All Roles</option>
+                  <option value="member">Member</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Account Status</span>
+                <select
+                  value={userFilters.status}
+                  onChange={(e) => setUserFilters((prev) => ({ ...prev, status: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="all">All Accounts</option>
+                  <option value="active">Active Only</option>
+                  <option value="inactive">Inactive Only</option>
+                </select>
+              </label>
+
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setUserFilters({ search: '', role: '', status: 'all' })}
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Badge variant="success">{activeUsersCount} active shown</Badge>
+              <Badge variant="neutral">{inactiveUsersCount} inactive shown</Badge>
+            </div>
+
+            <div className="space-y-3">
+              {usersLoading ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-10 text-center text-slate-500">
+                  <RefreshCw className="mx-auto mb-3 h-5 w-5 animate-spin text-slate-400" />
+                  Loading organization users...
+                </div>
+              ) : managedUsers.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-10 text-center text-slate-500">
+                  No users match the current filters.
+                </div>
+              ) : (
+                managedUsers.map((managedUser) => {
+                  const isUpdating = updatingUserId === managedUser._id;
+                  const isSelf = managedUser._id === user?._id;
+
+                  return (
+                    <div key={managedUser._id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-900">{managedUser.name}</p>
+                            <Badge variant={managedUser.isActive ? 'success' : 'neutral'}>
+                              {managedUser.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                            <Badge variant={managedUser.role === 'admin' ? 'danger' : managedUser.role === 'moderator' ? 'warning' : 'primary'}>
+                              {managedUser.role}
+                            </Badge>
+                            {isSelf ? <Badge variant="warning">Current account</Badge> : null}
+                          </div>
+                          <p className="truncate text-sm text-slate-600">{managedUser.email}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                            <span>{managedUser.organization}</span>
+                            <span>Joined {new Date(managedUser.createdAt).toLocaleDateString()}</span>
+                            <span>
+                              Last active {managedUser.lastActiveAt ? new Date(managedUser.lastActiveAt).toLocaleString() : 'No activity yet'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                          <label className="block">
+                            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Role</span>
+                            <select
+                              value={managedUser.role}
+                              disabled={isUpdating || isSelf}
+                              onChange={(e) => handleRoleChange(managedUser, e.target.value)}
+                              className="min-w-[150px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <option value="member">Member</option>
+                              <option value="moderator">Moderator</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </label>
+
+                          <div className="flex items-end">
+                            <Button
+                              variant={managedUser.isActive ? 'ghost' : 'primary'}
+                              loading={isUpdating}
+                              disabled={isSelf}
+                              className={managedUser.isActive ? 'border border-slate-200 bg-slate-50 hover:bg-slate-100' : ''}
+                              onClick={() => handleToggleUserStatus(managedUser)}
+                            >
+                              {managedUser.isActive ? 'Deactivate' : 'Reactivate'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </CardContent>
+          ) : null}
+        </Card>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -360,8 +606,8 @@ const AdminPanel = () => {
                 <ScrollText className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white">Audit Activity</h3>
-                <p className="text-sm text-slate-200">Recent admin and user actions across the platform</p>
+                <h3 className="text-lg font-semibold text-white">Organization Activity</h3>
+                <p className="text-sm text-slate-200">Recent admin and user actions within {user?.organization || 'your organization'}</p>
               </div>
             </div>
             <div className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/15">
@@ -398,6 +644,10 @@ const AdminPanel = () => {
                   <option value="feedback.archived">Feedback Archived</option>
                   <option value="user.registered">User Registered</option>
                   <option value="user.login">User Login</option>
+                  <option value="user.search">User Search</option>
+                  <option value="user.role_updated">Role Changes</option>
+                  <option value="user.deactivated">User Deactivated</option>
+                  <option value="user.reactivated">User Reactivated</option>
                   <option value="user.profile_updated">Profile Updated</option>
                   <option value="user.deleted">User Deleted</option>
                 </select>

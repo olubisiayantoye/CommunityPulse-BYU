@@ -547,12 +547,14 @@ export const getAuditLogs = async (req, res) => {
       targetType,
       severity,
       actor,
+      organization,
       hasNote = 'all',
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
 
     const query = {};
+    const organizationFilter = organization || req.user.organization;
 
     if (action) query.action = action;
     if (targetType) query.targetType = targetType;
@@ -566,13 +568,31 @@ export const getAuditLogs = async (req, res) => {
 
     if (actor) {
       const actorRegex = new RegExp(escapeRegExp(actor), 'i');
-      const matchingActorIds = await User.find({
+      const matchingActorIds = await User.findIncludingInactive({
         $or: [{ name: actorRegex }, { email: actorRegex }]
       }).distinct('_id');
 
       query.actor = matchingActorIds.length > 0
         ? { $in: matchingActorIds }
         : { $in: [] };
+    }
+
+    if (organizationFilter) {
+      const orgUserIds = await User.findIncludingInactive({
+        organization: organizationFilter
+      }).distinct('_id');
+
+      query.$and = [
+        ...(query.$and || []),
+        {
+          $or: [
+            { actor: { $in: orgUserIds } },
+            { 'details.organization': organizationFilter },
+            { targetType: 'User', targetId: { $in: orgUserIds } },
+            { 'details.submittedBy': { $in: orgUserIds } }
+          ]
+        }
+      ];
     }
 
     const sortFieldMap = {
@@ -613,9 +633,11 @@ export const getAuditLogs = async (req, res) => {
                 email: entry.actor.email,
                 role: entry.actor.role
               }
-            : null
+            : null,
+          organization: entry.details?.organization || organizationFilter || null
         })),
-        total
+        total,
+        organization: organizationFilter || null
       }
     });
   } catch (error) {
