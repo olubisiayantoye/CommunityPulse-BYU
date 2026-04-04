@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Users, MessageSquare, AlertTriangle, Settings, 
   Download, RefreshCw, Eye, ScrollText, UserCircle2, Clock3, Filter, ArrowUpDown,
-  Search, ShieldAlert, FileText, Sparkles
+  Search, ShieldAlert, FileText, Sparkles, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -35,6 +35,7 @@ const AdminPanel = () => {
   const [pendingFeedback, setPendingFeedback] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditTotal, setAuditTotal] = useState(0);
+  const [isAuditActivityOpen, setIsAuditActivityOpen] = useState(false);
   const [filters, setFilters] = useState({ category: '', status: 'Pending' });
   const [auditFilters, setAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
 
@@ -49,15 +50,16 @@ const AdminPanel = () => {
 
   useEffect(() => {
     if (!adminLoading && !auditLoading && location.hash === '#audit-activity') {
+      setIsAuditActivityOpen(true);
       document.getElementById('audit-activity')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [adminLoading, auditLoading, location.hash]);
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' && isAuditActivityOpen) {
       fetchAuditLogs();
     }
-  }, [user, auditFilters]);
+  }, [user, auditFilters, isAuditActivityOpen]);
 
   const fetchAdminData = async () => {
     setAdminLoading(true);
@@ -152,6 +154,18 @@ const AdminPanel = () => {
     !filters.category || fb.category === filters.category
   ));
 
+  const handleAuditActivityToggle = () => {
+    setIsAuditActivityOpen((prev) => {
+      const next = !prev;
+      if (!prev) {
+        window.requestAnimationFrame(() => {
+          document.getElementById('audit-activity')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+      return next;
+    });
+  };
+
   if (adminLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -176,9 +190,9 @@ const AdminPanel = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => document.getElementById('audit-activity')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              onClick={handleAuditActivityToggle}
             >
-              <ScrollText className="w-4 h-4 mr-1" /> Audit Log
+              <ScrollText className="w-4 h-4 mr-1" /> {isAuditActivityOpen ? 'Hide Audit Log' : 'View Audit Log'}
             </Button>
             <Button variant="outline" size="sm" onClick={() => { fetchAdminData(); fetchAuditLogs(); }}>
               <RefreshCw className="w-4 h-4 mr-1" /> Refresh
@@ -361,13 +375,25 @@ const AdminPanel = () => {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-white">Audit Activity</h3>
-                <p className="text-sm text-slate-200">Recent admin and user actions across the platform</p>
+                <p className="text-sm text-slate-200">Complete platform audit history across all users and actions</p>
               </div>
             </div>
-            <div className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/15">
-              {auditTotal} matching events
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/15">
+                {auditTotal} matching events
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+                onClick={handleAuditActivityToggle}
+              >
+                {isAuditActivityOpen ? <ChevronUp className="mr-1 h-4 w-4" /> : <ChevronDown className="mr-1 h-4 w-4" />}
+                {isAuditActivityOpen ? 'Collapse' : 'Expand to view'}
+              </Button>
             </div>
           </CardHeader>
+          {isAuditActivityOpen ? (
           <CardContent className="bg-slate-50/80">
             <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -547,6 +573,13 @@ const AdminPanel = () => {
               )}
             </div>
           </CardContent>
+          ) : (
+            <CardContent className="bg-slate-50/80">
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-10 text-center text-slate-500">
+                Expand to view the full audit log and filters.
+              </div>
+            </CardContent>
+          )}
         </Card>
 
       </div>
