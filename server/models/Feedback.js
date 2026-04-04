@@ -34,6 +34,11 @@ const feedbackSchema = new mongoose.Schema({
   }],
   // Metadata (anonymous by design)
   isAnonymous: { type: Boolean, default: true },
+  submittedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   submittedAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 }, {
@@ -45,6 +50,7 @@ const feedbackSchema = new mongoose.Schema({
 // Index for efficient querying
 feedbackSchema.index({ category: 1, sentiment: 1, status: 1 });
 feedbackSchema.index({ submittedAt: -1 });
+feedbackSchema.index({ submittedBy: 1, submittedAt: -1 });
 
 // Virtual for priority scoring
 feedbackSchema.virtual('priorityScore').get(function() {

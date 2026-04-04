@@ -2,6 +2,10 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
 import User from '../models/User.js';
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail
+} from '../utils/emailService.js';
 
 // 🔐 Generate JWT Token
 const generateToken = (userId) => {
@@ -43,6 +47,26 @@ const sendTokenResponse = (user, statusCode, res) => {
     });
 };
 
+const isEmailVerificationRequired = () => process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
+
+const createSecureToken = () => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  return {
+    rawToken,
+    hashedToken
+  };
+};
+
+const buildDevelopmentPreview = (key, url) => (
+  process.env.NODE_ENV === 'production'
+    ? undefined
+    : {
+        [key]: url
+      }
+);
+
 // 🚀 REGISTER
 export const register = async (req, res) => {
   try {
@@ -61,14 +85,40 @@ export const register = async (req, res) => {
       });
     }
 
+    const requireVerification = isEmailVerificationRequired();
+
     const user = await User.create({
       name,
       email: email.toLowerCase(),
       password,
       organization,
       role: role === 'admin' ? 'admin' : 'member',
-      isVerified: process.env.NODE_ENV !== 'production'
+      isVerified: !requireVerification
     });
+
+    if (requireVerification) {
+      const { rawToken, hashedToken } = createSecureToken();
+      user.verificationToken = hashedToken;
+      user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+      await user.save({ validateBeforeSave: false });
+
+      const verificationUrl = `${process.env.CLIENT_URL}/verify-email/${rawToken}`;
+      await sendVerificationEmail({
+        email: user.email,
+        verificationUrl,
+        name: user.name
+      });
+
+      return res.status(201).json({
+        success: true,
+        requiresVerification: true,
+        message: 'Account created. Please verify your email to continue.',
+        data: {
+          email: user.email,
+          ...buildDevelopmentPreview('verificationUrl', verificationUrl)
+        }
+      });
+    }
 
     sendTokenResponse(user, 201, res);
 
@@ -110,6 +160,17 @@ export const login = async (req, res) => {
 
     if (!user.isActive) {
       return res.status(403).json({ success: false, message: 'Account is deactivated' });
+    }
+
+    if (!user.isVerified && isEmailVerificationRequired()) {
+      return res.status(403).json({
+        success: false,
+        requiresVerification: true,
+        message: 'Please verify your email before signing in.',
+        data: {
+          email: user.email
+        }
+      });
     }
 
     const isMatch = await user.comparePassword(password);
@@ -163,14 +224,14 @@ export const getMe = async (req, res) => {
 // ✏️ UPDATE PROFILE
 export const updateProfile = async (req, res) => {
   try {
-    const { name, bio, avatar, preferences } = req.body;
+    const { name, bio, avatar, preferences, organization } = req.body;
     const user = await User.findById(req.user.id);
     
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    await user.updateProfile({ name, bio, avatar, preferences });
+    await user.updateProfile({ name, bio, avatar, preferences, organization });
 
     res.status(200).json({
       success: true,
@@ -231,23 +292,23 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    
-    user.passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
+    const { rawToken, hashedToken } = createSecureToken();
+
+    user.passwordResetToken = hashedToken;
     user.passwordResetExpires = Date.now() + 60 * 60 * 1000;
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-    
-    // TODO: Implement email sending with your email service
-    console.log('📧 Password reset URL:', resetUrl);
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+    await sendPasswordResetEmail({
+      email: user.email,
+      resetUrl,
+      name: user.name
+    });
 
     res.status(200).json({
       success: true,
-      message: 'Password reset link sent to your email.'
+      message: 'Password reset link sent to your email.',
+      data: buildDevelopmentPreview('resetUrl', resetUrl)
     });
 
   } catch (error) {
@@ -359,12 +420,22 @@ export const resendVerification = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email is already verified' });
     }
 
-    // TODO: Implement email sending
-    console.log('📧 Verification email would be sent to:', email);
+    const { rawToken, hashedToken } = createSecureToken();
+    user.verificationToken = hashedToken;
+    user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+    await user.save({ validateBeforeSave: false });
+
+    const verificationUrl = `${process.env.CLIENT_URL}/verify-email/${rawToken}`;
+    await sendVerificationEmail({
+      email: user.email,
+      verificationUrl,
+      name: user.name
+    });
 
     res.status(200).json({
       success: true,
-      message: 'Verification email sent! Please check your inbox.'
+      message: 'Verification email sent! Please check your inbox.',
+      data: buildDevelopmentPreview('verificationUrl', verificationUrl)
     });
 
   } catch (error) {

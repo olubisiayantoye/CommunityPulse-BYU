@@ -1,4 +1,4 @@
-import { body, query, param } from 'express-validator';
+import { body, query, param, validationResult } from 'express-validator';
 
 // =============================================================================
 // 🔐 AUTH VALIDATION
@@ -44,6 +44,11 @@ export const validateUpdateProfile = [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage('Name must be between 2 and 50 characters'),
+  body('organization')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Organization name cannot be empty'),
   body('bio')
     .optional()
     .trim()
@@ -231,3 +236,15 @@ export const handleValidationErrors = (req, res, next) => {
   
   next();
 };
+
+validateRegister.push(handleValidationErrors);
+validateLogin.push(handleValidationErrors);
+validateUpdateProfile.push(handleValidationErrors);
+validateChangePassword.push(handleValidationErrors);
+validateForgotPassword.push(handleValidationErrors);
+validateResetPassword.push(handleValidationErrors);
+validateCreateFeedback.push(handleValidationErrors);
+validateUpdateFeedback.push(handleValidationErrors);
+validateFeedbackQuery.push(handleValidationErrors);
+validateAnalyticsQuery.push(handleValidationErrors);
+validateCategoryParams.push(handleValidationErrors);

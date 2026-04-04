@@ -170,14 +170,32 @@ export const updateFeedback = async (req, res) => {
 
     // Members can only edit their own feedback content
     if (req.user.role === 'member') {
-      if (content) {
-        feedback.content = content;
-      } else {
+      const ownsFeedback =
+        feedback.submittedBy &&
+        typeof feedback.submittedBy.equals === 'function' &&
+        feedback.submittedBy.equals(req.user._id);
+
+      if (!ownsFeedback) {
         return res.status(403).json({
           success: false,
-          message: 'Members can only update content of their own feedback'
+          message: 'You can only update your own non-anonymous feedback'
         });
       }
+
+      if (!content || status || adminNote) {
+        return res.status(403).json({
+          success: false,
+          message: 'Members can only update the content of their own feedback'
+        });
+      }
+
+      const sentimentResult = await analyzeSentiment(content);
+      feedback.content = content;
+      feedback.keywords = extractKeywords(content);
+      feedback.sentiment = {
+        label: sentimentResult.label,
+        score: sentimentResult.score
+      };
     }
 
     // Admins/Mods can update status and add notes
@@ -317,7 +335,10 @@ export const getMyFeedback = async (req, res) => {
   try {
     const { page = 1, limit = 20, status } = req.query;
 
-    const query = { isAnonymous: false };
+    const query = {
+      isAnonymous: false,
+      submittedBy: req.user._id
+    };
     
     if (status) query.status = status;
 
@@ -369,7 +390,8 @@ export const getFeedbackStats = async (req, res) => {
       data: {
         total: totalFeedback,
         sentiment: sentimentBreakdown.reduce((acc, s) => {
-          acc[s._id.toLowerCase()] = s.count;
+          const label = s._id ? String(s._id).toLowerCase() : 'neutral';
+          acc[label] = (acc[label] || 0) + s.count;
           return acc;
         }, {})
       }

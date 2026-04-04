@@ -12,6 +12,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useAuth } from '../context/AuthContext';
 import { getDashboardAnalytics, getPriorityAlerts } from '../services/analyticsService';
+import { getMyFeedback, getFeedbackStats } from '../services/feedbackService';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#22c55e', '#94a3b8', '#ef4444']; // Green, Gray, Red
@@ -30,12 +31,22 @@ const Dashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [analyticsRes, alertsRes] = await Promise.all([
-        getDashboardAnalytics({ days: dateRange }),
-        getPriorityAlerts({ limit: 5 })
-      ]);
-      setAnalytics(analyticsRes.data);
-      setAlerts(alertsRes.data.alerts);
+      if (user?.role === 'admin' || user?.role === 'moderator') {
+        const [analyticsRes, alertsRes] = await Promise.all([
+          getDashboardAnalytics({ days: parseDateRange(dateRange) }),
+          getPriorityAlerts({ limit: 5 })
+        ]);
+        setAnalytics(analyticsRes.data);
+        setAlerts(alertsRes.data.alerts || []);
+      } else {
+        const [myFeedbackRes, statsRes] = await Promise.all([
+          getMyFeedback({ limit: 100 }),
+          getFeedbackStats()
+        ]);
+
+        setAnalytics(buildMemberAnalytics(myFeedbackRes.data.feedback || [], statsRes.data || {}));
+        setAlerts([]);
+      }
     } catch (error) {
       toast.error('Failed to load dashboard data');
       console.error(error);
@@ -262,6 +273,92 @@ const Dashboard = () => {
       </div>
     </div>
   );
+};
+
+const parseDateRange = (value) => {
+  const parsed = parseInt(String(value).replace(/\D/g, ''), 10);
+  return Number.isFinite(parsed) ? parsed : 30;
+};
+
+const buildMemberAnalytics = (feedbackItems, stats) => {
+  const sentiment = { positive: 0, neutral: 0, negative: 0 };
+  const status = { pending: 0, in_progress: 0, resolved: 0, dismissed: 0 };
+  const categoryMap = new Map();
+  const trendMap = new Map();
+  const recentThreshold = new Date();
+
+  recentThreshold.setDate(recentThreshold.getDate() - 7);
+
+  feedbackItems.forEach((item) => {
+    const sentimentLabel = item.sentiment?.label || 'NEUTRAL';
+
+    if (sentimentLabel === 'POSITIVE') sentiment.positive += 1;
+    else if (sentimentLabel === 'NEGATIVE') sentiment.negative += 1;
+    else sentiment.neutral += 1;
+
+    const statusKey = (item.status || 'Pending').toLowerCase().replace(' ', '_');
+    status[statusKey] = (status[statusKey] || 0) + 1;
+
+    const category = item.category || 'Other';
+    const currentCategory = categoryMap.get(category) || {
+      name: category,
+      count: 0,
+      totalSentiment: 0
+    };
+
+    currentCategory.count += 1;
+    currentCategory.totalSentiment +=
+      sentimentLabel === 'POSITIVE' ? 1 : sentimentLabel === 'NEGATIVE' ? -1 : 0;
+    categoryMap.set(category, currentCategory);
+
+    const dateKey = new Date(item.submittedAt).toISOString().slice(0, 10);
+    const currentTrend = trendMap.get(dateKey) || {
+      date: dateKey,
+      total: 0,
+      positive: 0,
+      neutral: 0,
+      negative: 0
+    };
+
+    currentTrend.total += 1;
+    if (sentimentLabel === 'POSITIVE') currentTrend.positive += 1;
+    else if (sentimentLabel === 'NEGATIVE') currentTrend.negative += 1;
+    else currentTrend.neutral += 1;
+
+    trendMap.set(dateKey, currentTrend);
+  });
+
+  const totalFeedback = feedbackItems.length;
+
+  return {
+    overview: {
+      totalFeedback,
+      recentActivity: feedbackItems.filter((item) => new Date(item.submittedAt) >= recentThreshold).length,
+      sentimentScore:
+        totalFeedback > 0
+          ? Math.round(((sentiment.positive - sentiment.negative) / totalFeedback) * 100)
+          : 0,
+      responseRate:
+        totalFeedback > 0
+          ? Math.round((((status.resolved || 0) + (status.in_progress || 0)) / totalFeedback) * 100)
+          : 0,
+      communityTotalFeedback: stats.total || 0
+    },
+    sentiment,
+    categories: Array.from(categoryMap.values()).map((item) => ({
+      name: item.name,
+      count: item.count,
+      sentiment: item.count > 0 ? item.totalSentiment / item.count : 0
+    })),
+    status,
+    trends: Array.from(trendMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((item) => ({
+        ...item,
+        sentimentScore:
+          item.total > 0 ? Math.round(((item.positive - item.negative) / item.total) * 100) : 0
+      }))
+  };
 };
 
 // Stat Card Component

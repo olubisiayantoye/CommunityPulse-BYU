@@ -28,7 +28,7 @@ export const LoginForm = () => {
 
     try {
       const response = await login(formData);
-      authLogin(response.data.user, response.data.token);
+      authLogin(response.user, response.token);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');

@@ -10,18 +10,13 @@ import mongoose from 'mongoose';
 export const getDashboardAnalytics = async (req, res) => {
   try {
     const { 
+      days,
       startDate, 
       endDate, 
       organization 
     } = req.query;
 
-    // Build date filter
-    const dateFilter = {};
-    if (startDate || endDate) {
-      dateFilter.submittedAt = {};
-      if (startDate) dateFilter.submittedAt.$gte = new Date(startDate);
-      if (endDate) dateFilter.submittedAt.$lte = new Date(endDate);
-    }
+    const dateFilter = buildDateFilter({ days, startDate, endDate });
 
     // Build organization filter (for multi-tenant support)
     const orgFilter = {};
@@ -40,6 +35,7 @@ export const getDashboardAnalytics = async (req, res) => {
 
     // Total Feedback Count
     const totalFeedback = await Feedback.countDocuments(query);
+    const totalUsers = await User.countDocuments();
 
     // Sentiment Breakdown
     const sentimentBreakdown = await Feedback.aggregate([
@@ -112,7 +108,7 @@ export const getDashboardAnalytics = async (req, res) => {
     // Priority Issues (Negative + High Upvotes)
     const priorityIssues = await Feedback.find({
       ...query,
-      sentiment: { label: 'NEGATIVE' },
+      'sentiment.label': 'NEGATIVE',
       upvoteCount: { $gte: 5 }
     })
       .sort({ upvoteCount: -1, submittedAt: -1 })
@@ -134,6 +130,7 @@ export const getDashboardAnalytics = async (req, res) => {
       data: {
         overview: {
           totalFeedback,
+          totalUsers,
           recentActivity,
           sentimentScore,
           responseRate: calculateResponseRate(statusBreakdown)
@@ -146,12 +143,13 @@ export const getDashboardAnalytics = async (req, res) => {
           negativeAvgScore: sentiment.negative.avgScore?.toFixed(2) || 0
         },
         categories: categoryBreakdown.map(c => ({
-          name: c._id,
+          name: c._id || 'Other',
           count: c.count,
-          sentiment: c.avgSentiment?.toFixed(2) || 0
+          sentiment: Number(c.avgSentiment?.toFixed(2) || 0)
         })),
         status: statusBreakdown.reduce((acc, s) => {
-          acc[s._id.toLowerCase().replace(' ', '_')] = s.count;
+          const statusKey = normalizeStatusKey(s._id);
+          acc[statusKey] = (acc[statusKey] || 0) + s.count;
           return acc;
         }, {}),
         priorityIssues,
@@ -285,7 +283,8 @@ export const getCategoryAnalytics = async (req, res) => {
         overview: {
           total: totalInCategory,
           sentiment: sentimentDist.reduce((acc, s) => {
-            acc[s._id.toLowerCase()] = s.count;
+            const key = s._id ? String(s._id).toLowerCase() : 'neutral';
+            acc[key] = (acc[key] || 0) + s.count;
             return acc;
           }, {})
         },
@@ -656,6 +655,34 @@ const calculateResponseRate = (statusBreakdown) => {
     : 0;
 };
 
+const buildDateFilter = ({ days, startDate, endDate }) => {
+  const dateFilter = {};
+
+  if (startDate || endDate) {
+    dateFilter.submittedAt = {};
+    if (startDate) dateFilter.submittedAt.$gte = new Date(startDate);
+    if (endDate) dateFilter.submittedAt.$lte = new Date(endDate);
+    return dateFilter;
+  }
+
+  if (days) {
+    const parsedDays = parseInt(days, 10);
+    if (!Number.isNaN(parsedDays) && parsedDays > 0) {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - parsedDays);
+      dateFilter.submittedAt = { $gte: start, $lte: end };
+    }
+  }
+
+  return dateFilter;
+};
+
+const normalizeStatusKey = (status) => {
+  if (!status) return 'pending';
+  return String(status).toLowerCase().replace(/\s+/g, '_');
+};
+
 // =============================================================================
 // 📊 COMPARISON ANALYTICS
 // Compare two time periods
@@ -733,14 +760,16 @@ export const getComparisonAnalytics = async (req, res) => {
         current: {
           total: currentTotal,
           sentiment: currentSentiment.reduce((acc, s) => {
-            acc[s._id.toLowerCase()] = s.count;
+            const key = s._id ? String(s._id).toLowerCase() : 'neutral';
+            acc[key] = (acc[key] || 0) + s.count;
             return acc;
           }, {})
         },
         previous: {
           total: previousTotal,
           sentiment: previousSentiment.reduce((acc, s) => {
-            acc[s._id.toLowerCase()] = s.count;
+            const key = s._id ? String(s._id).toLowerCase() : 'neutral';
+            acc[key] = (acc[key] || 0) + s.count;
             return acc;
           }, {})
         },

@@ -23,15 +23,16 @@ api.interceptors.request.use(
 
 export const register = async (userData) => {
   const response = await api.post('/auth/register', userData);
-  return response.data;
+  return normalizeAuthResponse(response.data);
 };
 
 export const login = async (credentials) => {
   const response = await api.post('/auth/login', credentials);
-  if (response.data?.data?.token) {
-    localStorage.setItem('token', response.data.data.token);
+  const normalized = normalizeAuthResponse(response.data);
+  if (normalized.token) {
+    localStorage.setItem('token', normalized.token);
   }
-  return response.data;
+  return normalized;
 };
 
 export const logout = async () => {
@@ -60,28 +61,33 @@ export const changePassword = async (passwordData) => {
   return response.data;
 };
 
-
-export const forgotPassword = async (email) => {
-  const response = await api.post('/auth/forgot-password', { email });
+export const forgotPassword = async (payload) => {
+  const requestBody = typeof payload === 'string' ? { email: payload } : payload;
+  const response = await api.post('/auth/forgot-password', requestBody);
   return response.data;
 };
 
-export const resetPassword = async (token, newPassword) => {
-  const response = await api.post('/auth/reset-password', { token, newPassword });
+export const resetPassword = async (payload, maybeNewPassword) => {
+  const requestBody =
+    typeof payload === 'string'
+      ? { token: payload, newPassword: maybeNewPassword }
+      : payload;
+  const response = await api.post('/auth/reset-password', requestBody);
   return response.data;
 };
-// ===========================
 
 export const verifyEmail = async (token) => {
   const response = await api.get(`/auth/verify-email/${token}`);
-  if (response.data?.data?.token) {
-    localStorage.setItem('token', response.data.data.token);
+  const normalized = normalizeAuthResponse(response.data);
+  if (normalized.token) {
+    localStorage.setItem('token', normalized.token);
   }
-  return response.data;
+  return normalized;
 };
 
-export const resendVerification = async (email) => {
-  const response = await api.post('/auth/resend-verification', { email });
+export const resendVerification = async (payload) => {
+  const requestBody = typeof payload === 'string' ? { email: payload } : payload;
+  const response = await api.post('/auth/resend-verification', requestBody);
   return response.data;
 };
 
@@ -95,6 +101,10 @@ export const deleteAccount = async (password) => {
   return response.data;
 };
 
-
+const normalizeAuthResponse = (payload = {}) => ({
+  ...payload,
+  user: payload.user || payload.data?.user || null,
+  token: payload.token || payload.data?.token || null
+});
 
 export default api;
