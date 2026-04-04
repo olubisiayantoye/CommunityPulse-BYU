@@ -1,26 +1,42 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Users, MessageSquare, AlertTriangle, Settings, 
-  Download, Filter, RefreshCw, Search, Eye
+  Download, RefreshCw, Eye, ScrollText, UserCircle2, Clock3, Filter, ArrowUpDown,
+  Search, ShieldAlert, FileText, Sparkles
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useAuth } from '../context/AuthContext';
-import { getDashboardAnalytics, getPriorityAlerts, exportAnalytics } from '../services/analyticsService';
+import { getAuditLogs, getDashboardAnalytics, getPriorityAlerts, exportAnalytics } from '../services/analyticsService';
 import { getFeedback, updateFeedback } from '../services/feedbackService';
 import toast from 'react-hot-toast';
+
+const DEFAULT_AUDIT_FILTERS = {
+  action: '',
+  targetType: '',
+  severity: '',
+  actor: '',
+  hasNote: 'all',
+  sortBy: 'createdAt',
+  sortOrder: 'desc'
+};
 
 const AdminPanel = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
-  const [loading, setLoading] = useState(true);
+  const [adminLoading, setAdminLoading] = useState(true);
+  const [auditLoading, setAuditLoading] = useState(true);
   const [analytics, setAnalytics] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [pendingFeedback, setPendingFeedback] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditTotal, setAuditTotal] = useState(0);
   const [filters, setFilters] = useState({ category: '', status: 'Pending' });
+  const [auditFilters, setAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
 
   useEffect(() => {
     // Redirect if not admin
@@ -28,11 +44,23 @@ const AdminPanel = () => {
       navigate('/dashboard');
       return;
     }
-    fetchData();
+    fetchAdminData();
   }, [user, navigate]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (!adminLoading && !auditLoading && location.hash === '#audit-activity') {
+      document.getElementById('audit-activity')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [adminLoading, auditLoading, location.hash]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchAuditLogs();
+    }
+  }, [user, auditFilters]);
+
+  const fetchAdminData = async () => {
+    setAdminLoading(true);
     try {
       const [analyticsRes, alertsRes, feedbackRes] = await Promise.all([
         getDashboardAnalytics({ days: 30 }),
@@ -46,16 +74,57 @@ const AdminPanel = () => {
       toast.error('Failed to load admin data');
       console.error(error);
     } finally {
-      setLoading(false);
+      setAdminLoading(false);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    setAuditLoading(true);
+    try {
+      const requestParams = {
+        limit: 12,
+        hasNote: auditFilters.hasNote,
+        sortBy: auditFilters.sortBy,
+        sortOrder: auditFilters.sortOrder
+      };
+
+      if (auditFilters.action) requestParams.action = auditFilters.action;
+      if (auditFilters.targetType) requestParams.targetType = auditFilters.targetType;
+      if (auditFilters.severity) requestParams.severity = auditFilters.severity;
+
+      const trimmedActor = auditFilters.actor.trim();
+      if (trimmedActor) requestParams.actor = trimmedActor;
+
+      const auditRes = await getAuditLogs(requestParams);
+      setAuditLogs(auditRes.data.auditLogs || []);
+      setAuditTotal(auditRes.data.total || 0);
+    } catch (error) {
+      toast.error('Failed to load audit log');
+      console.error(error);
+    } finally {
+      setAuditLoading(false);
     }
   };
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      await updateFeedback(id, { status: newStatus });
+      const adminNote = window.prompt(
+        'Add an optional admin note for the audit log. Leave blank to skip.',
+        ''
+      );
+
+      if (adminNote === null) {
+        return;
+      }
+
+      await updateFeedback(id, {
+        status: newStatus,
+        adminNote: adminNote.trim() || undefined
+      });
       // Update local state
       setPendingFeedback(prev => prev.filter(fb => fb._id !== id));
       setAlerts(prev => prev.filter(a => a._id !== id));
+      await Promise.all([fetchAdminData(), fetchAuditLogs()]);
       toast.success(`Marked as ${newStatus}`);
     } catch (error) {
       toast.error('Failed to update status');
@@ -79,7 +148,11 @@ const AdminPanel = () => {
     }
   };
 
-  if (loading) {
+  const filteredPendingFeedback = pendingFeedback.filter((fb) => (
+    !filters.category || fb.category === filters.category
+  ));
+
+  if (adminLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
@@ -100,7 +173,14 @@ const AdminPanel = () => {
             <p className="text-slate-600">Manage community feedback and settings</p>
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="outline" size="sm" onClick={fetchData}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById('audit-activity')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              <ScrollText className="w-4 h-4 mr-1" /> Audit Log
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { fetchAdminData(); fetchAuditLogs(); }}>
               <RefreshCw className="w-4 h-4 mr-1" /> Refresh
             </Button>
             <Button variant="primary" size="sm" onClick={() => handleExport('csv')}>
@@ -205,10 +285,10 @@ const AdminPanel = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {pendingFeedback.length === 0 ? (
+                {filteredPendingFeedback.length === 0 ? (
                   <p className="text-center text-slate-500 py-4">All caught up! 🎉</p>
                 ) : (
-                  pendingFeedback.map((fb) => (
+                  filteredPendingFeedback.map((fb) => (
                     <div key={fb._id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -273,9 +353,223 @@ const AdminPanel = () => {
           </CardContent>
         </Card>
 
+        <Card className="mt-6 overflow-hidden border-slate-200/80 shadow-sm" id="audit-activity">
+          <CardHeader className="flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 text-white border-b-0">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
+                <ScrollText className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Audit Activity</h3>
+                <p className="text-sm text-slate-200">Recent admin and user actions across the platform</p>
+              </div>
+            </div>
+            <div className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/15">
+              {auditTotal} matching events
+            </div>
+          </CardHeader>
+          <CardContent className="bg-slate-50/80">
+            <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Filter Audit Trail</p>
+                  <p className="text-xs text-slate-500">Refine entries by action, person, note, or severity.</p>
+                </div>
+                <Button variant="ghost" className="border border-slate-200 bg-slate-50 hover:bg-slate-100" onClick={() => setAuditFilters(DEFAULT_AUDIT_FILTERS)}>
+                  Clear Filters
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+              <label className="block">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1">
+                  <Filter className="w-3.5 h-3.5" />
+                  Action
+                </span>
+                <select
+                  value={auditFilters.action}
+                  onChange={(e) => setAuditFilters((prev) => ({ ...prev, action: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="">All Actions</option>
+                  <option value="feedback.status_updated">Status Updates</option>
+                  <option value="feedback.created">Feedback Created</option>
+                  <option value="feedback.updated">Feedback Updated</option>
+                  <option value="feedback.archived">Feedback Archived</option>
+                  <option value="user.registered">User Registered</option>
+                  <option value="user.login">User Login</option>
+                  <option value="user.profile_updated">Profile Updated</option>
+                  <option value="user.deleted">User Deleted</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">Target</span>
+                <select
+                  value={auditFilters.targetType}
+                  onChange={(e) => setAuditFilters((prev) => ({ ...prev, targetType: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="">All Targets</option>
+                  <option value="Feedback">Feedback</option>
+                  <option value="User">User</option>
+                  <option value="System">System</option>
+                  <option value="Analytics">Analytics</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">Note</span>
+                <select
+                  value={auditFilters.hasNote}
+                  onChange={(e) => setAuditFilters((prev) => ({ ...prev, hasNote: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="all">All Entries</option>
+                  <option value="with-note">With Note</option>
+                  <option value="without-note">Without Note</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">Severity</span>
+                <select
+                  value={auditFilters.severity}
+                  onChange={(e) => setAuditFilters((prev) => ({ ...prev, severity: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="">All Severity</option>
+                  <option value="info">Info</option>
+                  <option value="warning">Warning</option>
+                  <option value="error">Error</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_220px] gap-3 mb-5">
+              <label className="block">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1">
+                  <Search className="w-3.5 h-3.5" />
+                  Changed By
+                </span>
+                <input
+                  type="text"
+                  value={auditFilters.actor}
+                  onChange={(e) => setAuditFilters((prev) => ({ ...prev, actor: e.target.value }))}
+                  placeholder="Filter by name or email"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1">
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                  Sort
+                </span>
+                <select
+                  value={`${auditFilters.sortBy}:${auditFilters.sortOrder}`}
+                  onChange={(e) => {
+                    const [sortBy, sortOrder] = e.target.value.split(':');
+                    setAuditFilters((prev) => ({ ...prev, sortBy, sortOrder }));
+                  }}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="createdAt:desc">Newest First</option>
+                  <option value="createdAt:asc">Oldest First</option>
+                  <option value="action:asc">Action A-Z</option>
+                  <option value="severity:desc">Highest Severity</option>
+                  <option value="targetType:asc">Target A-Z</option>
+                </select>
+              </label>
+            </div>
+            </div>
+
+            <div className="space-y-4">
+              {auditLoading ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-500">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+                    <RefreshCw className="w-6 h-6 animate-spin text-slate-500" />
+                  </div>
+                  <p className="font-medium text-slate-700">Loading audit activity...</p>
+                  <p className="mt-1 text-sm text-slate-500">Pulling the latest admin and user actions.</p>
+                </div>
+              ) : auditLogs.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-500">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+                    <ScrollText className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <p className="font-medium text-slate-700">No audit entries match the current filters.</p>
+                  <p className="mt-1 text-sm text-slate-500">Try clearing a filter or widening the search.</p>
+                </div>
+              ) : (
+                auditLogs.map((entry) => (
+                  <div key={entry._id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge variant={entry.details?.newStatus ? 'warning' : 'neutral'}>
+                            {formatActionLabel(entry.action)}
+                          </Badge>
+                          {entry.details?.previousStatus || entry.details?.newStatus ? (
+                            <Badge variant="primary">
+                              {(entry.details?.previousStatus || 'Pending')} to {entry.details?.newStatus || 'Pending'}
+                            </Badge>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
+                          <UserCircle2 className="w-4 h-4" />
+                          <span>{entry.changedBy?.name || entry.changedBy?.email || 'System'}</span>
+                        </div>
+
+                        {entry.note ? (
+                          <div className="mb-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Note</p>
+                            <p className="text-sm text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                              {entry.note}
+                            </p>
+                          </div>
+                        ) : null}
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <Clock3 className="w-3.5 h-3.5" />
+                            {new Date(entry.createdAt).toLocaleString()}
+                          </span>
+                          <span>{entry.targetType}</span>
+                          {entry.details?.category ? <span>{entry.details.category}</span> : null}
+                          {entry.severity ? <span className="capitalize">{entry.severity}</span> : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
+};
+
+const formatActionLabel = (action = '') =>
+  String(action)
+    .split('.')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+const getAuditSeverityAccent = (severity = 'info') => {
+  if (severity === 'error') return 'bg-gradient-to-r from-rose-500 to-red-500';
+  if (severity === 'warning') return 'bg-gradient-to-r from-amber-400 to-orange-500';
+  return 'bg-gradient-to-r from-sky-500 to-indigo-500';
+};
+
+const getAuditSeverityPill = (severity = 'info') => {
+  if (severity === 'error') return 'bg-rose-50 text-rose-700 ring-rose-100';
+  if (severity === 'warning') return 'bg-amber-50 text-amber-700 ring-amber-100';
+  return 'bg-sky-50 text-sky-700 ring-sky-100';
 };
 
 // Stat Card Component (consistent with Dashboard.jsx)

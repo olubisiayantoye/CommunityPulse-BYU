@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
+import AuditLog from '../models/AuditLog.js';
 import User from '../models/User.js';
 import {
   sendPasswordResetEmail,
@@ -67,6 +68,23 @@ const buildDevelopmentPreview = (key, url) => (
       }
 );
 
+const recordAuditLog = async (req, payload) => {
+  try {
+    await AuditLog.record({
+      actor: payload.actor ?? req.user?._id ?? null,
+      action: payload.action,
+      targetType: payload.targetType || 'System',
+      targetId: payload.targetId ?? null,
+      details: payload.details || {},
+      ipAddress: req.ip || null,
+      userAgent: req.get('user-agent') || null,
+      severity: payload.severity || 'info'
+    });
+  } catch (error) {
+    console.error('Audit log write failed:', error);
+  }
+};
+
 // 🚀 REGISTER
 export const register = async (req, res) => {
   try {
@@ -102,6 +120,20 @@ export const register = async (req, res) => {
       user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
       await user.save({ validateBeforeSave: false });
 
+      await recordAuditLog(req, {
+        actor: user._id,
+        action: 'user.registered',
+        targetType: 'User',
+        targetId: user._id,
+        details: {
+          email: user.email,
+          name: user.name,
+          organization: user.organization,
+          role: user.role,
+          requiresVerification: true
+        }
+      });
+
       const verificationUrl = `${process.env.CLIENT_URL}/verify-email/${rawToken}`;
       await sendVerificationEmail({
         email: user.email,
@@ -119,6 +151,19 @@ export const register = async (req, res) => {
         }
       });
     }
+
+    await recordAuditLog(req, {
+      actor: user._id,
+      action: 'user.registered',
+      targetType: 'User',
+      targetId: user._id,
+      details: {
+        email: user.email,
+        name: user.name,
+        organization: user.organization,
+        role: user.role
+      }
+    });
 
     sendTokenResponse(user, 201, res);
 
@@ -181,6 +226,18 @@ export const login = async (req, res) => {
     user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
 
+    await recordAuditLog(req, {
+      actor: user._id,
+      action: 'user.login',
+      targetType: 'User',
+      targetId: user._id,
+      details: {
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    });
+
     sendTokenResponse(user, 200, res);
 
   } catch (error) {
@@ -232,6 +289,16 @@ export const updateProfile = async (req, res) => {
     }
 
     await user.updateProfile({ name, bio, avatar, preferences, organization });
+
+    await recordAuditLog(req, {
+      action: 'user.profile_updated',
+      targetType: 'User',
+      targetId: user._id,
+      details: {
+        updatedFields: Object.keys({ name, bio, avatar, preferences, organization })
+          .filter((key) => ({ name, bio, avatar, preferences, organization }[key] !== undefined))
+      }
+    });
 
     res.status(200).json({
       success: true,
@@ -459,6 +526,17 @@ export const deleteAccount = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Password incorrect' });
     }
+
+    await recordAuditLog(req, {
+      action: 'user.deleted',
+      targetType: 'User',
+      targetId: user._id,
+      details: {
+        email: user.email,
+        name: user.name
+      },
+      severity: 'warning'
+    });
 
     await User.softDelete(user._id);
 

@@ -6,7 +6,8 @@ import {
   exportAnalytics,
   getPriorityAlerts,
   getUserEngagement,
-  getComparisonAnalytics
+  getComparisonAnalytics,
+  getAuditLogs
 } from '../controllers/analyticsController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import {
@@ -74,6 +75,13 @@ router.get(
   authorize('admin', 'moderator'),
   validateAnalyticsQuery,
   getComparisonAnalytics
+);
+
+router.get(
+  '/audit-logs',
+  authorize('admin'),
+  validateAnalyticsQuery,
+  getAuditLogs
 );
 
 export default router;
