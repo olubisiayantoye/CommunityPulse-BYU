@@ -221,7 +221,7 @@ router.delete(
  * @route   GET /api/auth/admin/users
  * @desc    Get all users (Admin only - for user management)
  * @access  Private/Admin
- * @query   { page, limit, role, organization, isActive }
+ * @query   { page, limit, role, organization, isActive, search }
  */
 router.get(
   '/admin/users',
@@ -230,38 +230,66 @@ router.get(
   async (req, res) => {
     try {
       const User = (await import('../models/User.js')).default;
+      const AuditLog = (await import('../models/AuditLog.js')).default;
       
       const { 
         page = 1, 
         limit = 20, 
         role, 
         organization, 
-        isActive 
+        isActive,
+        search = ''
       } = req.query;
 
       const query = {};
-      if (role) query.role = role;
       if (organization) query.organization = organization;
+      if (role) query.role = role;
       if (isActive !== undefined) query.isActive = isActive === 'true';
+      if (search.trim()) {
+        const searchRegex = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        query.$or = [{ name: searchRegex }, { email: searchRegex }];
+      }
 
-      const users = await User.find(query)
+      const normalizedPage = Math.max(parseInt(page, 10) || 1, 1);
+      const normalizedLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+
+      const users = await User.findIncludingInactive(query)
         .select('-password')
         .sort({ createdAt: -1 })
-        .limit(limit * 1)
-        .skip((page - 1) * limit);
+        .limit(normalizedLimit)
+        .skip((normalizedPage - 1) * normalizedLimit);
 
-      const total = await User.countDocuments(query);
+      const total = await User.countDocuments(query).setOptions({ bypassActiveFilter: true });
+
+      await AuditLog.record({
+        actor: req.user._id,
+        action: 'user.search',
+        targetType: 'User',
+        details: {
+          organization: query.organization,
+          role: role || null,
+          isActive: isActive ?? 'all',
+          search: search.trim() || null,
+          page: normalizedPage,
+          limit: normalizedLimit,
+          resultCount: users.length
+        },
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null,
+        severity: 'info'
+      });
 
       res.status(200).json({
         success: true,
         data: {
           users,
           pagination: {
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(total / limit),
+            currentPage: normalizedPage,
+            totalPages: Math.ceil(total / normalizedLimit),
             totalItems: total,
-            itemsPerPage: limit
-          }
+            itemsPerPage: normalizedLimit
+          },
+          organization: query.organization
         }
       });
     } catch (error) {
@@ -288,8 +316,9 @@ router.put(
   async (req, res) => {
     try {
       const User = (await import('../models/User.js')).default;
+      const AuditLog = (await import('../models/AuditLog.js')).default;
       const { id } = req.params;
-      const { role, isActive, organization } = req.body;
+      const { role, isActive } = req.body;
 
       // Prevent admin from modifying their own account
       if (id === req.user.id) {
@@ -302,12 +331,22 @@ router.put(
       const updateData = {};
       if (role) updateData.role = role;
       if (isActive !== undefined) updateData.isActive = isActive;
-      if (organization) updateData.organization = organization;
 
-      const user = await User.findByIdAndUpdate(
-        id,
+      const existingUser = await User.findOneIncludingInactive({
+        _id: id
+      }).select('-password');
+
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const user = await User.findOneAndUpdate(
+        { _id: id },
         { $set: updateData },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true, bypassActiveFilter: true }
       ).select('-password');
 
       if (!user) {
@@ -316,6 +355,43 @@ router.put(
           message: 'User not found'
         });
       }
+
+      const changedFields = {};
+      if (role && role !== existingUser.role) {
+        changedFields.role = {
+          previous: existingUser.role,
+          current: role
+        };
+      }
+      if (isActive !== undefined && isActive !== existingUser.isActive) {
+        changedFields.isActive = {
+          previous: existingUser.isActive,
+          current: isActive
+        };
+      }
+
+      const action = changedFields.role
+        ? 'user.role_updated'
+        : changedFields.isActive
+        ? (isActive ? 'user.reactivated' : 'user.deactivated')
+        : 'user.updated';
+
+      await AuditLog.record({
+        actor: req.user._id,
+        action,
+        targetType: 'User',
+        targetId: user._id,
+        details: {
+          organization: user.organization,
+          userId: user._id,
+          userName: user.name,
+          userEmail: user.email,
+          changedFields
+        },
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null,
+        severity: changedFields.isActive ? 'warning' : 'info'
+      });
 
       res.status(200).json({
         success: true,
