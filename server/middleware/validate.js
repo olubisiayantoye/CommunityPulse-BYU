@@ -175,6 +175,10 @@ export const validateFeedbackQuery = [
 // =============================================================================
 
 export const validateAnalyticsQuery = [
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100'),
   query('startDate')
     .optional()
     .isISO8601()
@@ -186,7 +190,7 @@ export const validateAnalyticsQuery = [
     .toDate()
     .withMessage('endDate must be a valid ISO 8601 date'),
   query('organization')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .notEmpty()
     .withMessage('Organization cannot be empty'),
@@ -201,7 +205,37 @@ export const validateAnalyticsQuery = [
   query('format')
     .optional()
     .isIn(['csv', 'json'])
-    .withMessage('Format must be csv or json')
+    .withMessage('Format must be csv or json'),
+  query('action')
+    .optional({ values: 'falsy' })
+    .trim()
+    .notEmpty()
+    .withMessage('Action filter cannot be empty'),
+  query('targetType')
+    .optional({ values: 'falsy' })
+    .isIn(['User', 'Feedback', 'Analytics', 'System'])
+    .withMessage('Invalid target type'),
+  query('severity')
+    .optional({ values: 'falsy' })
+    .isIn(['info', 'warning', 'error'])
+    .withMessage('Invalid severity'),
+  query('actor')
+    .optional({ values: 'falsy' })
+    .trim()
+    .notEmpty()
+    .withMessage('Actor filter cannot be empty'),
+  query('hasNote')
+    .optional()
+    .isIn(['all', 'with-note', 'without-note'])
+    .withMessage('hasNote must be all, with-note, or without-note'),
+  query('sortBy')
+    .optional()
+    .isIn(['createdAt', 'action', 'severity', 'targetType'])
+    .withMessage('Invalid sort field'),
+  query('sortOrder')
+    .optional()
+    .isIn(['asc', 'desc'])
+    .withMessage('sortOrder must be asc or desc')
 ];
 
 export const validateCategoryParams = [

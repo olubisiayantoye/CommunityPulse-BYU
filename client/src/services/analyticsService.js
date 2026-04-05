@@ -15,6 +15,11 @@ export const getPriorityAlerts = async (params = {}) => {
   return response.data;
 };
 
+export const getAuditLogs = async (params = {}) => {
+  const response = await api.get('/analytics/audit-logs', { params });
+  return response.data;
+};
+
 export const exportAnalytics = async (params = {}) => {
   const response = await api.get('/analytics/export', { 
     params,
@@ -27,5 +32,6 @@ export default {
   getDashboardAnalytics,
   getSentimentTrends,
   getPriorityAlerts,
+  getAuditLogs,
   exportAnalytics
 };
