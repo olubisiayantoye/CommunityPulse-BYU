@@ -8,7 +8,7 @@
 [![React](https://img.shields.io/badge/react-18.2.0-blue)](https://react.dev)
 [![MongoDB](https://img.shields.io/badge/mongodb-8.0-green)](https://mongodb.com)
 
-> *"Hear Your Community. Before Problems Escalate."*
+> _"Hear Your Community. Before Problems Escalate."_
 
 ---
 
@@ -33,19 +33,23 @@
 
 ## 🎯 Overview
 
-**CommunityPulse** is a comprehensive full-stack web application designed to bridge the communication gap between community leaders and members. 
+**CommunityPulse** is a comprehensive full-stack web application designed to bridge the communication gap between community leaders and members.
 
 ### The Problem
+
 In many organizations—schools, churches, student groups, nonprofits, and small enterprises—leadership often lacks real-time insight into member sentiment. Dissatisfaction frequently remains silent until it escalates into a critical issue.
 
 ### The Solution
+
 CommunityPulse provides:
+
 - 🔐 **Secure anonymous feedback** submission for members
 - 🤖 **AI-powered sentiment analysis** using Hugging Face NLP to detect emotional tone
 - 📊 **Real-time dashboards** with interactive charts and priority alerts for administrators
 - 📈 **Actionable data visualizations** to identify trends and resolve conflicts early
 
 ### Project Goal
+
 Demonstrate professional software engineering practices by building a production-ready application that combines modern web development, secure authentication, cloud database management, and machine learning integration.
 
 ---
@@ -53,82 +57,89 @@ Demonstrate professional software engineering practices by building a production
 ## ✨ Key Features
 
 ### 👥 For Members
-| Feature | Description |
-|---------|-------------|
-| 🔐 Anonymous Submission | Share honest feedback without revealing identity |
+
+| Feature                 | Description                                                                        |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| 🔐 Anonymous Submission | Share honest feedback without revealing identity                                   |
 | 📝 Categorized Feedback | Tag feedback under Facilities, Leadership, Safety, Events, Communication, or Other |
-| 👍 Peer Voting | Upvote existing feedback to highlight common concerns |
-| 📊 Track Submissions | View status of your submitted feedback (Pending → In Progress → Resolved) |
+| 👍 Peer Voting          | Upvote existing feedback to highlight common concerns                              |
+| 📊 Track Submissions    | View status of your submitted feedback (Pending → In Progress → Resolved)          |
 
 ### 👑 For Administrators
-| Feature | Description |
-|---------|-------------|
-| 📈 Real-Time Dashboard | Visual overview of community mood with sentiment charts, trend lines, and key metrics |
+
+| Feature                  | Description                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| 📈 Real-Time Dashboard   | Visual overview of community mood with sentiment charts, trend lines, and key metrics  |
 | 🤖 AI Sentiment Analysis | Automatic tagging of messages as Positive, Neutral, or Negative using Hugging Face NLP |
-| 🚨 Priority Alerts | Immediate visibility on negative sentiment trends with high upvote counts |
-| 📥 Data Export | Download comprehensive reports in CSV or JSON format |
-| 👥 User Management | Manage member accounts, roles (member/moderator/admin), and permissions |
-| 📋 Issue Tracking | Update feedback status with admin notes and resolution workflows |
+| 🚨 Priority Alerts       | Immediate visibility on negative sentiment trends with high upvote counts              |
+| 📥 Data Export           | Download comprehensive reports in CSV or JSON format                                   |
+| 👥 User Management       | Manage member accounts, roles (member/moderator/admin), and permissions                |
+| 📋 Issue Tracking        | Update feedback status with admin notes and resolution workflows                       |
 
 ### 🔒 Security & Performance
-| Feature | Implementation |
-|---------|---------------|
-| 🔐 JWT Authentication | Secure token-based auth with HTTP-only cookies |
-| 🛡️ Rate Limiting | Express-rate-limit middleware prevents API abuse |
-| 🔐 Password Security | bcrypt hashing with salt rounds + input validation |
-| 📱 Responsive Design | Mobile-first Tailwind CSS, works on all devices |
-| 📝 Audit Logging | Track admin actions for accountability |
-| 🌐 CORS & Helmet | Secure HTTP headers and cross-origin configuration |
+
+| Feature               | Implementation                                     |
+| --------------------- | -------------------------------------------------- |
+| 🔐 JWT Authentication | Secure token-based auth with HTTP-only cookies     |
+| 🛡️ Rate Limiting      | Express-rate-limit middleware prevents API abuse   |
+| 🔐 Password Security  | bcrypt hashing with salt rounds + input validation |
+| 📱 Responsive Design  | Mobile-first Tailwind CSS, works on all devices    |
+| 📝 Audit Logging      | Track admin actions for accountability             |
+| 🌐 CORS & Helmet      | Secure HTTP headers and cross-origin configuration |
 
 ---
 
 ## 🛠️ Technology Stack
 
 ### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React | 18.2+ | Component-based UI library |
-| React Router | 6.22+ | Client-side routing and navigation |
-| Vite | 5.1+ | Fast build tool and dev server |
-| Tailwind CSS | 3.4+ | Utility-first CSS framework |
-| Axios | 1.6+ | HTTP client for API communication |
-| Recharts | 2.12+ | Declarative charts and data visualization |
-| Lucide React | 0.34+ | Beautiful, consistent icon library |
-| React Hot Toast | 2.4+ | Elegant toast notifications |
+
+| Technology      | Version | Purpose                                   |
+| --------------- | ------- | ----------------------------------------- |
+| React           | 18.2+   | Component-based UI library                |
+| React Router    | 6.22+   | Client-side routing and navigation        |
+| Vite            | 5.1+    | Fast build tool and dev server            |
+| Tailwind CSS    | 3.4+    | Utility-first CSS framework               |
+| Axios           | 1.6+    | HTTP client for API communication         |
+| Recharts        | 2.12+   | Declarative charts and data visualization |
+| Lucide React    | 0.34+   | Beautiful, consistent icon library        |
+| React Hot Toast | 2.4+    | Elegant toast notifications               |
 
 ### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Node.js | 18+ | JavaScript runtime environment |
-| Express.js | 4.18+ | Minimal web framework |
-| MongoDB | 8.0+ | NoSQL document database |
-| Mongoose | 8.2+ | ODM for MongoDB schema management |
-| JSON Web Tokens | 9.0+ | Stateless authentication |
-| bcryptjs | 2.4+ | Secure password hashing |
-| Hugging Face Inference | 2.6+ | AI sentiment analysis API |
-| express-validator | 7.0+ | Request validation and sanitization |
-| express-rate-limit | 7.2+ | API rate limiting middleware |
-| helmet | 7.1+ | Security headers middleware |
-| cors | 2.8+ | Cross-origin resource sharing |
+
+| Technology             | Version | Purpose                             |
+| ---------------------- | ------- | ----------------------------------- |
+| Node.js                | 18+     | JavaScript runtime environment      |
+| Express.js             | 4.18+   | Minimal web framework               |
+| MongoDB                | 8.0+    | NoSQL document database             |
+| Mongoose               | 8.2+    | ODM for MongoDB schema management   |
+| JSON Web Tokens        | 9.0+    | Stateless authentication            |
+| bcryptjs               | 2.4+    | Secure password hashing             |
+| Hugging Face Inference | 2.6+    | AI sentiment analysis API           |
+| express-validator      | 7.0+    | Request validation and sanitization |
+| express-rate-limit     | 7.2+    | API rate limiting middleware        |
+| helmet                 | 7.1+    | Security headers middleware         |
+| cors                   | 2.8+    | Cross-origin resource sharing       |
 
 ### DevOps & Tools
-| Tool | Purpose |
-|------|---------|
-| Git & GitHub | Version control and collaboration |
-| Render.com | Backend hosting with auto-deploy |
-| Vercel/Netlify | Frontend static hosting |
-| MongoDB Atlas | Cloud-managed MongoDB cluster |
-| ESLint + Prettier | Code quality and formatting |
-| dotenv | Environment variable management |
+
+| Tool              | Purpose                           |
+| ----------------- | --------------------------------- |
+| Git & GitHub      | Version control and collaboration |
+| Render.com        | Backend hosting with auto-deploy  |
+| Vercel/Netlify    | Frontend static hosting           |
+| MongoDB Atlas     | Cloud-managed MongoDB cluster     |
+| ESLint + Prettier | Code quality and formatting       |
+| dotenv            | Environment variable management   |
 
 ---
 
 ## 📁 Project Structure
+
 community-pulse-byu/<br>
 ├── client/ # React Frontend (Vite)<br>
 │ ├── public/<br>
 │ │ ├── vite.svg<br>
-│ │ └── _redirects # SPA routing for Netlify/Vercel<br>
+│ │ └── \_redirects # SPA routing for Netlify/Vercel<br>
 │ ├── src/<br>
 │ │ ├── components/<br>
 │ │ │ ├── ui/ # Reusable UI components<br>
@@ -202,37 +213,44 @@ community-pulse-byu/<br>
 ├── README.md<br>
 └── LICENSE<br>
 
-
 👥 Team Members
 
-| Name	        |Role	                                  | GitHub |
-|---------------|-----------------------------------------|------------------|
-| Favourite Atuhu | Full-Stack Developer(QA & Documentation  ) | @ohayitsfay | 
-| Olubisi Ayantoye | Full-Stack Developer |    	                |  -| 
-| Adedeji Usman | Frontend Developer	 |                      |     -| 
-| Azeez Daniel	|  Backend Developer	  |                      |    -| 
-| John Idorot	|     DevOps & Database	   |                     |     -| 
-
-
+| Name             | Role                                      | GitHub      |
+| ---------------- | ----------------------------------------- | ----------- | --- |
+| Favourite Atuhu  | Full-Stack Developer(QA & Documentation ) | @ohayitsfay |
+| Olubisi Ayantoye | Full-Stack Developer                      |             | -   |
+| Adedeji Usman    | Frontend Developer                        |             | -   |
+| Azeez Daniel     | Backend Developer                         |             | -   |
+| John Idorot      | DevOps & Database                         |             | -   |
 
 ## Contribution
 
 Each team member contributes through GitHub using commits and pull requests. All code changes should include clear commit messages and follow clean coding practices.
 
 ## Olubisi Ayantoye's Ouote
+
 "The beauty of life does not depend on how happy you are, but on how happy others can be because of you."
 
-## Favourite Atuhu's  Quote
+## Favourite Atuhu's Quote
+
 "Success is not final failure is not fatal it is the courage to continue that counts."
 
 ## Adedeji Favorite Quote
+
 "The Lord doesn't require you to succeed; He only requires you to try."
+
 - Thomas S. Monson
 
+## DJ Idorot Quote
+
+"Let love conquer pride."
+
+- Dieter F. Uchtdorf
 
 ---
 
 ## 🚀 Quick Start
+
 ```bash
 # 1. Clone & install
 git clone hhttps://github.com/olubisiayantoye/CommunityPulse-BYU.git
@@ -250,3 +268,4 @@ cd ../client
 npm install
 cp .env.example .env  # Set VITE_API_URL=http://localhost:5000/api
 npm run dev           # http://localhost:5173
+```

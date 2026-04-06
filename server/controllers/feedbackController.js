@@ -24,6 +24,19 @@ const extractKeywords = (text, maxKeywords = 5) => {
     .map(([word]) => word);
 };
 
+
+const detectPlatform = (userAgent = '') => {
+  const normalized = String(userAgent).toLowerCase();
+
+  if (!normalized) return 'Web';
+  if (normalized.includes('postman') || normalized.includes('insomnia') || normalized.includes('axios')) return 'API';
+  if (normalized.includes('ipad') || normalized.includes('tablet')) return 'Tablet';
+  if (normalized.includes('mobi') || normalized.includes('android') || normalized.includes('iphone')) return 'Mobile';
+  if (normalized.includes('mozilla') || normalized.includes('chrome') || normalized.includes('safari')) return 'Web';
+
+  return 'Other';
+};
+
 const recordAuditLog = async (req, payload) => {
   try {
     const details = {
@@ -58,6 +71,7 @@ export const createFeedback = async (req, res) => {
     }
 
     const { content, category, isAnonymous = true } = req.body;
+    const platform = detectPlatform(req.get('user-agent'));
     
     // AI Sentiment Analysis via Hugging Face
     const sentimentResult = await analyzeSentiment(content);
@@ -72,7 +86,8 @@ export const createFeedback = async (req, res) => {
       },
       keywords,
       isAnonymous,
-      submittedBy: isAnonymous ? null : req.user._id
+      submittedBy: isAnonymous ? null : req.user._id,
+      metadata: { platform }
     });
 
     await recordAuditLog(req, {
@@ -82,7 +97,8 @@ export const createFeedback = async (req, res) => {
         category: feedback.category,
         isAnonymous: feedback.isAnonymous,
         status: feedback.status,
-        submittedBy: feedback.submittedBy
+        submittedBy: feedback.submittedBy,
+        platform: feedback.metadata?.platform || platform
       }
     });
 
