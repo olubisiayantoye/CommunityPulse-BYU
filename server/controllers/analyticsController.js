@@ -10,121 +10,211 @@ import mongoose from 'mongoose';
 
 export const getDashboardAnalytics = async (req, res) => {
   try {
-    const { 
+    const {
       days,
-      startDate, 
-      endDate, 
-      organization 
+      startDate,
+      endDate,
+      organization,
+      category,
+      platform,
+      interval
     } = req.query;
 
     const dateFilter = buildDateFilter({ days, startDate, endDate });
+    const query = buildAnalyticsQuery({ dateFilter, category, platform });
+    const trendInterval = interval || resolveInterval(days);
 
-    // Build organization filter (for multi-tenant support)
-    const orgFilter = {};
     if (organization) {
       const orgUsers = await User.find({ organization }).distinct('_id');
-      // If feedback has submittedBy field, filter by those users
-      // For now, we'll skip this for anonymous feedback
+      if (orgUsers.length > 0) {
+        query.$or = [{ submittedBy: { $in: orgUsers } }, { submittedBy: null }];
+      }
     }
 
-    // Combine filters
-    const query = { ...dateFilter };
-
-    // =============================================================================
-    // 📈 KEY METRICS
-    // =============================================================================
-
-    // Total Feedback Count
-    const totalFeedback = await Feedback.countDocuments(query);
-    const totalUsers = await User.countDocuments();
-
-    // Sentiment Breakdown
-    const sentimentBreakdown = await Feedback.aggregate([
-      { $match: query },
-      {
-        $group: {
-          _id: '$sentiment.label',
-          count: { $sum: 1 },
-          avgScore: { $avg: '$sentiment.score' }
+    const [
+      totalFeedback,
+      totalUsers,
+      sentimentBreakdown,
+      categoryBreakdown,
+      statusBreakdown,
+      priorityIssues,
+      trendData,
+      platformBreakdown,
+      participationBreakdown,
+      roleBreakdown,
+      topPerformingContent,
+      engagementStats,
+      growthRate,
+      filterOptions
+    ] = await Promise.all([
+      Feedback.countDocuments(query),
+      User.countDocuments(),
+      Feedback.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: '$sentiment.label',
+            count: { $sum: 1 },
+            avgScore: { $avg: '$sentiment.score' }
+          }
         }
-      }
-    ]);
-
-    // Format sentiment data
-    const sentiment = {
-      positive: sentimentBreakdown.find(s => s._id === 'POSITIVE') || { count: 0, avgScore: 0 },
-      neutral: sentimentBreakdown.find(s => s._id === 'NEUTRAL') || { count: 0, avgScore: 0 },
-      negative: sentimentBreakdown.find(s => s._id === 'NEGATIVE') || { count: 0, avgScore: 0 }
-    };
-
-    // Calculate overall sentiment score (-100 to 100)
-    const sentimentScore = totalFeedback > 0
-      ? Math.round(
-          ((sentiment.positive.count - sentiment.negative.count) / totalFeedback) * 100
-        )
-      : 0;
-
-    // Category Breakdown
-    const categoryBreakdown = await Feedback.aggregate([
-      { $match: query },
-      {
-        $group: {
-          _id: '$category',
-          count: { $sum: 1 },
-          avgSentiment: {
-            $avg: {
-              $switch: {
-                branches: [
-                  { case: { $eq: ['$sentiment.label', 'POSITIVE'] }, then: 1 },
-                  { case: { $eq: ['$sentiment.label', 'NEGATIVE'] }, then: -1 }
-                ],
-                default: 0
+      ]),
+      Feedback.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: '$category',
+            count: { $sum: 1 },
+            avgSentiment: {
+              $avg: {
+                $switch: {
+                  branches: [
+                    { case: { $eq: ['$sentiment.label', 'POSITIVE'] }, then: 1 },
+                    { case: { $eq: ['$sentiment.label', 'NEGATIVE'] }, then: -1 }
+                  ],
+                  default: 0
+                }
               }
             }
           }
+        },
+        { $sort: { count: -1 } }
+      ]),
+      Feedback.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
         }
-      },
-      { $sort: { count: -1 } }
+      ]),
+      Feedback.find({
+        ...query,
+        'sentiment.label': 'NEGATIVE',
+        upvoteCount: { $gte: 5 }
+      })
+        .sort({ upvoteCount: -1, submittedAt: -1 })
+        .limit(10)
+        .select('content category sentiment upvoteCount status submittedAt metadata.platform')
+        .lean(),
+      getTrendData(query, parseRequestedDays(days), trendInterval),
+      Feedback.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: { $ifNull: ['$metadata.platform', 'Web'] },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } }
+      ]),
+      Feedback.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: { $cond: [{ $eq: ['$isAnonymous', true] }, 'Anonymous', 'Identified'] },
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+      Feedback.aggregate([
+        { $match: { ...query, submittedBy: { $ne: null } } },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'submittedBy',
+            foreignField: '_id',
+            as: 'submittedUser'
+          }
+        },
+        { $unwind: '$submittedUser' },
+        {
+          $group: {
+            _id: '$submittedUser.role',
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } }
+      ]),
+      Feedback.aggregate([
+        { $match: query },
+        {
+          $addFields: {
+            performanceScore: {
+              $add: [
+                { $multiply: ['$upvoteCount', 4] },
+                {
+                  $switch: {
+                    branches: [
+                      { case: { $eq: ['$sentiment.label', 'POSITIVE'] }, then: 20 },
+                      { case: { $eq: ['$sentiment.label', 'NEUTRAL'] }, then: 10 },
+                      { case: { $eq: ['$sentiment.label', 'NEGATIVE'] }, then: 4 }
+                    ],
+                    default: 0
+                  }
+                },
+                {
+                  $cond: [
+                    { $eq: ['$status', 'Resolved'] },
+                    8,
+                    { $cond: [{ $eq: ['$status', 'In Progress'] }, 4, 0] }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        { $sort: { performanceScore: -1, upvoteCount: -1, submittedAt: -1 } },
+        { $limit: 6 },
+        {
+          $project: {
+            content: 1,
+            category: 1,
+            status: 1,
+            upvoteCount: 1,
+            submittedAt: 1,
+            sentiment: 1,
+            performanceScore: 1,
+            platform: { $ifNull: ['$metadata.platform', 'Web'] }
+          }
+        }
+      ]),
+      Feedback.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: null,
+            totalUpvotes: { $sum: '$upvoteCount' },
+            avgUpvotesPerFeedback: { $avg: '$upvoteCount' },
+            uniqueContributors: { $addToSet: '$submittedBy' }
+          }
+        }
+      ]),
+      calculateGrowthRate(query, { days, startDate, endDate }),
+      getAvailableFilterOptions()
     ]);
 
-    // Status Breakdown
-    const statusBreakdown = await Feedback.aggregate([
-      { $match: query },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+    const sentiment = {
+      positive: sentimentBreakdown.find((s) => s._id === 'POSITIVE') || { count: 0, avgScore: 0 },
+      neutral: sentimentBreakdown.find((s) => s._id === 'NEUTRAL') || { count: 0, avgScore: 0 },
+      negative: sentimentBreakdown.find((s) => s._id === 'NEGATIVE') || { count: 0, avgScore: 0 }
+    };
 
-    // Recent Activity (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const recentActivity = await Feedback.countDocuments({
-      submittedAt: { $gte: sevenDaysAgo }
-    });
+    const engagement = engagementStats[0] || {
+      totalUpvotes: 0,
+      avgUpvotesPerFeedback: 0,
+      uniqueContributors: []
+    };
 
-    // Priority Issues (Negative + High Upvotes)
-    const priorityIssues = await Feedback.find({
-      ...query,
-      'sentiment.label': 'NEGATIVE',
-      upvoteCount: { $gte: 5 }
-    })
-      .sort({ upvoteCount: -1, submittedAt: -1 })
-      .limit(10)
-      .select('content category sentiment upvoteCount status submittedAt');
+    const uniqueContributors = new Set(
+      (engagement.uniqueContributors || []).filter(Boolean).map((id) => String(id))
+    ).size;
 
-    // =============================================================================
-    // 📉 TREND DATA (Last 30 Days)
-    // =============================================================================
-
-    const trendData = await getTrendData(query, 30);
-
-    // =============================================================================
-    // 🎯 RESPONSE
-    // =============================================================================
+    const responseRate = calculateResponseRate(statusBreakdown);
+    const sentimentScore = totalFeedback > 0
+      ? Math.round(((sentiment.positive.count - sentiment.negative.count) / totalFeedback) * 100)
+      : 0;
 
     res.status(200).json({
       success: true,
@@ -132,18 +222,21 @@ export const getDashboardAnalytics = async (req, res) => {
         overview: {
           totalFeedback,
           totalUsers,
-          recentActivity,
           sentimentScore,
-          responseRate: calculateResponseRate(statusBreakdown)
+          responseRate,
+          engagementRate: totalFeedback > 0 ? Number((engagement.avgUpvotesPerFeedback || 0).toFixed(1)) : 0,
+          reach: totalFeedback + (engagement.totalUpvotes || 0),
+          growthRate,
+          activeContributors: uniqueContributors
         },
         sentiment: {
           positive: sentiment.positive.count,
           neutral: sentiment.neutral.count,
           negative: sentiment.negative.count,
-          positiveAvgScore: sentiment.positive.avgScore?.toFixed(2) || 0,
-          negativeAvgScore: sentiment.negative.avgScore?.toFixed(2) || 0
+          positiveAvgScore: Number(sentiment.positive.avgScore?.toFixed(2) || 0),
+          negativeAvgScore: Number(sentiment.negative.avgScore?.toFixed(2) || 0)
         },
-        categories: categoryBreakdown.map(c => ({
+        categories: categoryBreakdown.map((c) => ({
           name: c._id || 'Other',
           count: c.count,
           sentiment: Number(c.avgSentiment?.toFixed(2) || 0)
@@ -154,7 +247,23 @@ export const getDashboardAnalytics = async (req, res) => {
           return acc;
         }, {}),
         priorityIssues,
-        trends: trendData
+        trends: trendData,
+        topPerformingContent: topPerformingContent.map((item) => ({
+          ...item,
+          excerpt: truncateText(item.content, 120)
+        })),
+        demographics: {
+          platform: platformBreakdown.map((item) => ({ name: item._id || 'Web', value: item.count })),
+          participation: participationBreakdown.map((item) => ({ name: item._id, value: item.count })),
+          roles: roleBreakdown.map((item) => ({ name: item._id || 'member', value: item.count }))
+        },
+        filters: filterOptions,
+        appliedFilters: {
+          days: parseRequestedDays(days),
+          category: category || 'all',
+          platform: platform || 'all',
+          interval: trendInterval
+        }
       },
       meta: {
         dateRange: {
@@ -164,7 +273,6 @@ export const getDashboardAnalytics = async (req, res) => {
         generatedAt: new Date().toISOString()
       }
     });
-
   } catch (error) {
     console.error('❌ Dashboard Analytics Error:', error);
     res.status(500).json({
@@ -311,36 +419,32 @@ export const getCategoryAnalytics = async (req, res) => {
 
 export const exportAnalytics = async (req, res) => {
   try {
-    const { 
-      format = 'csv', // 'csv', 'json'
-      startDate, 
+    const {
+      format = 'csv',
+      startDate,
       endDate,
       category,
-      sentiment
+      sentiment,
+      platform,
+      days
     } = req.query;
 
-    const query = {};
-    
-    if (startDate || endDate) {
-      query.submittedAt = {};
-      if (startDate) query.submittedAt.$gte = new Date(startDate);
-      if (endDate) query.submittedAt.$lte = new Date(endDate);
-    }
-    
-    if (category) query.category = category;
+    const dateFilter = buildDateFilter({ days, startDate, endDate });
+    const query = buildAnalyticsQuery({ dateFilter, category, platform });
+
     if (sentiment) query['sentiment.label'] = sentiment;
 
-    // Fetch data
     const feedback = await Feedback.find(query)
-      .select('content category sentiment upvoteCount status submittedAt keywords')
+      .select('content category sentiment upvoteCount status submittedAt keywords metadata.platform isAnonymous')
       .sort({ submittedAt: -1 })
       .lean();
 
     if (format === 'csv') {
-      // Generate CSV
       const headers = [
         'Date',
         'Category',
+        'Platform',
+        'Participation',
         'Sentiment',
         'Sentiment Score',
         'Status',
@@ -349,43 +453,37 @@ export const exportAnalytics = async (req, res) => {
         'Keywords'
       ];
 
-      const rows = feedback.map(f => [
+      const escapeCsv = (value = '') => `"${String(value).replace(/"/g, '""')}"`;
+
+      const rows = feedback.map((f) => [
         f.submittedAt.toISOString().split('T')[0],
         f.category,
+        f.metadata?.platform || 'Web',
+        f.isAnonymous ? 'Anonymous' : 'Identified',
         f.sentiment.label,
         f.sentiment.score,
         f.status,
         f.upvoteCount,
-        `"${f.content.replace(/"/g, '""')}"`, // Escape quotes
-        f.keywords?.join(';') || ''
+        escapeCsv(f.content),
+        escapeCsv(f.keywords?.join('; ') || '')
       ]);
 
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
-      ].join('\n');
+      const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=community-pulse-analytics-${Date.now()}.csv`
-      );
+      res.setHeader('Content-Disposition', `attachment; filename=community-pulse-analytics-${Date.now()}.csv`);
       res.send(csvContent);
-    } else {
-      // JSON export
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=community-pulse-analytics-${Date.now()}.json`
-      );
-      res.json({
-        success: true,
-        exportedAt: new Date().toISOString(),
-        totalRecords: feedback.length,
-        data: feedback
-      });
+      return;
     }
 
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename=community-pulse-analytics-${Date.now()}.json`);
+    res.json({
+      success: true,
+      exportedAt: new Date().toISOString(),
+      totalRecords: feedback.length,
+      data: feedback
+    });
   } catch (error) {
     console.error('❌ Export Analytics Error:', error);
     res.status(500).json({
@@ -852,6 +950,86 @@ const buildDateFilter = ({ days, startDate, endDate }) => {
   }
 
   return dateFilter;
+};
+
+
+const truncateText = (value = '', maxLength = 120) => {
+  const normalized = String(value || '').trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+};
+
+const parseRequestedDays = (days) => {
+  const parsed = parseInt(days, 10);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return 30;
+};
+
+const resolveInterval = (days) => {
+  const parsedDays = parseRequestedDays(days);
+  if (parsedDays <= 14) return 'day';
+  if (parsedDays <= 90) return 'week';
+  return 'month';
+};
+
+const buildAnalyticsQuery = ({ dateFilter = {}, category, platform }) => {
+  const query = { ...dateFilter };
+
+  if (category && category !== 'all') {
+    query.category = category;
+  }
+
+  if (platform && platform !== 'all') {
+    query['metadata.platform'] = platform;
+  }
+
+  return query;
+};
+
+const calculateGrowthRate = async (baseQuery, { days, startDate, endDate }) => {
+  const activeRange = buildDateFilter({ days, startDate, endDate }).submittedAt;
+  const parsedDays = parseRequestedDays(days);
+
+  let currentStart = activeRange?.$gte ? new Date(activeRange.$gte) : new Date(Date.now() - parsedDays * 24 * 60 * 60 * 1000);
+  let currentEnd = activeRange?.$lte ? new Date(activeRange.$lte) : new Date();
+
+  if (currentEnd <= currentStart) currentEnd = new Date();
+
+  const durationMs = Math.max(currentEnd.getTime() - currentStart.getTime(), 24 * 60 * 60 * 1000);
+  const previousStart = new Date(currentStart.getTime() - durationMs);
+  const previousEnd = new Date(currentStart.getTime() - 1);
+
+  const stripDate = { ...baseQuery };
+  delete stripDate.submittedAt;
+
+  const [currentCount, previousCount] = await Promise.all([
+    Feedback.countDocuments({
+      ...stripDate,
+      submittedAt: { $gte: currentStart, $lte: currentEnd }
+    }),
+    Feedback.countDocuments({
+      ...stripDate,
+      submittedAt: { $gte: previousStart, $lte: previousEnd }
+    })
+  ]);
+
+  if (previousCount === 0) {
+    return currentCount > 0 ? 100 : 0;
+  }
+
+  return Math.round(((currentCount - previousCount) / previousCount) * 100);
+};
+
+const getAvailableFilterOptions = async () => {
+  const [categories, platforms] = await Promise.all([
+    Feedback.distinct('category'),
+    Feedback.distinct('metadata.platform')
+  ]);
+
+  return {
+    categories: categories.filter(Boolean).sort(),
+    platforms: platforms.filter(Boolean).sort()
+  };
 };
 
 const normalizeStatusKey = (status) => {

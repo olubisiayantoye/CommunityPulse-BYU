@@ -40,7 +40,14 @@ const feedbackSchema = new mongoose.Schema({
     default: null
   },
   submittedAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  metadata: {
+    platform: {
+      type: String,
+      enum: ['Web', 'Mobile', 'Tablet', 'API', 'Other'],
+      default: 'Web'
+    }
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
