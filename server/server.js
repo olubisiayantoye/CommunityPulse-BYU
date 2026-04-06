@@ -23,6 +23,13 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 
+// Add import
+import categoryRoutes from './routes/categoryRoutes.js';
+
+
+
+
+
 // Load environment variables
 dotenv.config();
 
@@ -105,6 +112,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+app.use('/api/categories', categoryRoutes);
 // =============================================================================
 // ⚠️ ERROR HANDLING
 // =============================================================================

@@ -31,15 +31,19 @@ const Header = () => {
     return location.hash === `#${hash}`;
   };
 
-  const navLinks = [
-    { label: 'Dashboard', path: '/dashboard', icon: BarChart3 },
-    { label: 'Feedback', path: '/feedback', icon: MessageSquare },
-    { label: 'Submit', path: '/feedback/submit', icon: MessageSquare },
-  ];
+ const navLinks = [
+  { label: 'Dashboard', path: '/dashboard', icon: BarChart3 },
+  { label: 'Feedback', path: '/feedback', icon: MessageSquare },
+  { label: 'Submit', path: '/feedback/submit', icon: MessageSquare },
+];
 
-  if (user?.role === 'admin') {
-    navLinks.push({ label: 'Admin', path: '/admin', icon: Settings });
-  }
+// Admin-only links
+if (user?.role === 'admin') {
+  navLinks.push(
+    { label: 'Categories', path: '/admin/categories', icon: Settings },
+    { label: 'Admin', path: '/admin', icon: Settings }
+  );
+}
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">

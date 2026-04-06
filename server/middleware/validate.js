@@ -1,4 +1,5 @@
 import { body, query, param, validationResult } from 'express-validator';
+import Category from '../models/Category.js';  
 
 // =============================================================================
 // 🔐 AUTH VALIDATION
@@ -106,10 +107,18 @@ export const validateCreateFeedback = [
     .trim()
     .isLength({ min: 10, max: 2000 })
     .withMessage('Feedback must be between 10 and 2000 characters'),
+  
+  // ✅ Simplified: Just check it's a non-empty string
+  // The controller does the DB lookup for active category
   body('category')
-    .optional()
-    .isIn(['Facilities', 'Leadership', 'Safety', 'Events', 'Communication', 'Other'])
-    .withMessage('Invalid category. Must be one of: Facilities, Leadership, Safety, Events, Communication, Other'),
+    .trim()
+    .notEmpty()
+    .withMessage('Category is required')
+    .isString()
+    .withMessage('Category must be a string')
+    .isLength({ max: 50 })
+    .withMessage('Category name cannot exceed 50 characters'),
+  
   body('isAnonymous')
     .optional()
     .isBoolean()
@@ -142,10 +151,22 @@ export const validateFeedbackQuery = [
     .optional()
     .isInt({ min: 1, max: 100 })
     .withMessage('Limit must be between 1 and 100'),
-  query('category')
+    query('category')
     .optional()
-    .isIn(['Facilities', 'Leadership', 'Safety', 'Events', 'Communication', 'Other'])
-    .withMessage('Invalid category'),
+    .trim()
+    .customSanitizer(value => value)  // Pass through for DB query
+    .custom(async (value) => {
+      if (value) {
+        const category = await Category.findOne({ 
+          name: { $regex: new RegExp(`^${value}$`, 'i') },
+          isActive: true 
+        });
+        if (!category) {
+          throw new Error('Invalid category filter');
+        }
+      }
+      return true;
+    }),
   query('sentiment')
     .optional()
     .isIn(['POSITIVE', 'NEUTRAL', 'NEGATIVE'])
@@ -241,8 +262,18 @@ export const validateAnalyticsQuery = [
 export const validateCategoryParams = [
   param('category')
     .trim()
-    .isIn(['Facilities', 'Leadership', 'Safety', 'Events', 'Communication', 'Other'])
-    .withMessage('Invalid category parameter')
+    .notEmpty()
+    .withMessage('Category parameter is required')
+    .custom(async (value) => {
+      const category = await Category.findOne({ 
+        name: { $regex: new RegExp(`^${value}$`, 'i') },
+        isActive: true 
+      });
+      if (!category) {
+        throw new Error('Invalid category');
+      }
+      return true;
+    })
 ];
 
 // =============================================================================
@@ -270,6 +301,39 @@ export const handleValidationErrors = (req, res, next) => {
   
   next();
 };
+
+// Add to existing validate.js exports
+
+export const validateCategory = [
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Category name must be 2-50 characters')
+    .matches(/^[a-zA-Z0-9\s]+$/)
+    .withMessage('Category name can only contain letters, numbers, and spaces'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Description cannot exceed 200 characters'),
+  body('icon')
+    .optional()
+    .isIn(['MessageSquare', 'Shield', 'Brain', 'BarChart3', 'Users', 'AlertTriangle', 'CheckCircle', 'Settings', 'Home', 'Briefcase', 'Heart', 'Star'])
+    .withMessage('Invalid icon value'),
+  body('color')
+    .optional()
+    .isIn(['indigo', 'blue', 'green', 'red', 'orange', 'purple', 'pink', 'yellow', 'teal'])
+    .withMessage('Invalid color value'),
+  body('order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Order must be a positive integer'),
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean')
+];
+
 
 validateRegister.push(handleValidationErrors);
 validateLogin.push(handleValidationErrors);

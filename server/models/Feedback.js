@@ -8,10 +8,12 @@ const feedbackSchema = new mongoose.Schema({
     maxlength: [2000, 'Feedback cannot exceed 2000 characters']
   },
   category: {
-    type: String,
-    enum: ['Facilities', 'Leadership', 'Safety', 'Events', 'Communication', 'Other'],
-    default: 'Other'
-  },
+  type: String,
+  required: [true, 'Category is required'],
+  trim: true,
+  maxlength: [100, 'Category name cannot exceed 100 characters'],
+  
+},
   // AI-Generated Fields
   sentiment: {
     label: { type: String, enum: ['POSITIVE', 'NEUTRAL', 'NEGATIVE'], default: 'NEUTRAL' },

@@ -21,7 +21,7 @@ import FeedbackBrowser from './pages/FeedbackBrowser';
 import FeedbackDetail from './pages/FeedbackDetail';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
-
+import Categories from './pages/admin/Categories';
 function App() {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -75,6 +75,9 @@ function App() {
         } />
         <Route path="/admin" element={
           <ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>
+        } />
+        <Route path="/admin/categories" element={
+          <ProtectedRoute adminOnly><Categories /></ProtectedRoute>
         } />
 
         {/* Catch-all */}

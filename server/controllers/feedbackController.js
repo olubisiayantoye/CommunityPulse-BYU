@@ -66,6 +66,20 @@ const recordAuditLog = async (req, payload) => {
 export const createFeedback = async (req, res) => {
   try {
     const errors = validationResult(req);
+
+ if (!errors.isEmpty()) {
+      console.error('❌ Validation Errors:', JSON.stringify(errors.array(), null, 2));
+      console.error('❌ Request Body:', req.body);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Validation failed',
+        errors: errors.array()  // ✅ Send detailed errors to frontend
+      });
+    }
+
+
+
+
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }

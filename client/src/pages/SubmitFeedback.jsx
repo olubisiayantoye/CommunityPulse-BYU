@@ -1,19 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, AlertCircle, CheckCircle, Loader2, Tag } from 'lucide-react';
+import { Send, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardContent, CardFooter } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { submitFeedback } from '../services/feedbackService';
+import { getActiveCategories } from '../services/categoryService';
 import toast from 'react-hot-toast';
 
-const categories = [
-  { value: 'Facilities', icon: '🏢', color: 'blue' },
-  { value: 'Leadership', icon: '👥', color: 'purple' },
-  { value: 'Safety', icon: '🛡️', color: 'red' },
-  { value: 'Events', icon: '🎉', color: 'orange' },
-  { value: 'Communication', icon: '📢', color: 'green' },
-  { value: 'Other', icon: '💬', color: 'slate' },
+const DEFAULT_CATEGORIES = [
+  { name: 'Facilities', description: 'Buildings and physical spaces', icon: 'Home', color: 'blue' },
+  { name: 'Leadership', description: 'Management and governance', icon: 'Users', color: 'indigo' },
+  { name: 'Safety', description: 'Security and health concerns', icon: 'Shield', color: 'red' },
+  { name: 'Events', description: 'Activities and programs', icon: 'Star', color: 'orange' },
+  { name: 'Communication', description: 'News and announcements', icon: 'MessageSquare', color: 'green' },
+  { name: 'Other', description: 'Other feedback', icon: 'Briefcase', color: 'slate' },
 ];
 
 const SubmitFeedback = () => {
@@ -26,6 +27,24 @@ const SubmitFeedback = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await getActiveCategories();
+        if (response?.data?.categories?.length > 0) {
+          setCategories(response.data.categories);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch categories, using defaults', error);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -37,8 +56,11 @@ const SubmitFeedback = () => {
     }
   };
 
+  // ✅ FIXED handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    console.log('📤 Submitting feedback:', formData);
     
     if (formData.content.length < 10) {
       toast.error('Feedback must be at least 10 characters');
@@ -51,19 +73,31 @@ const SubmitFeedback = () => {
     }
 
     setLoading(true);
+    
     try {
-      await submitFeedback(formData);
+      const response = await submitFeedback(formData);
+      
+      if (!response.success) {
+        const errorMsg = response.errors?.[0]?.message || response.message || 'Validation failed';
+        toast.error(errorMsg);
+        return;
+      }
+      
       setSubmitted(true);
       toast.success('Feedback submitted successfully! 🎉');
       
-      // Reset form after 3 seconds
       setTimeout(() => {
         setFormData({ content: '', category: '', isAnonymous: true });
         setCharCount(0);
         setSubmitted(false);
       }, 3000);
+      
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to submit feedback');
+      console.error('❌ Submit error:', error);
+      const errorMsg = error.response?.data?.errors?.[0]?.message 
+        || error.response?.data?.message 
+        || 'Failed to submit feedback';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -84,11 +118,7 @@ const SubmitFeedback = () => {
             <Button onClick={() => navigate('/dashboard')} className="w-full">
               Go to Dashboard
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setSubmitted(false)}
-              className="w-full"
-            >
+            <Button variant="outline" onClick={() => setSubmitted(false)} className="w-full">
               Submit Another
             </Button>
           </div>
@@ -100,12 +130,9 @@ const SubmitFeedback = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Share Your Feedback</h1>
-          <p className="text-slate-600">
-            Your voice matters. Help us build a better community together.
-          </p>
+          <p className="text-slate-600">Your voice matters. Help us build a better community together.</p>
         </div>
 
         <Card className="animate-slide-up">
@@ -120,23 +147,37 @@ const SubmitFeedback = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-3">
                   Category <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, category: cat.value })}
-                      className={`p-4 rounded-xl border-2 transition-all text-left ${
-                        formData.category === cat.value
-                          ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-200'
-                          : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="text-2xl mb-2">{cat.icon}</div>
-                      <div className="font-medium text-slate-900">{cat.value}</div>
-                    </button>
-                  ))}
-                </div>
+                
+                {categoriesLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.name}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, category: cat.name })}
+                        className={`p-4 rounded-xl border-2 transition-all text-left ${
+                          formData.category === cat.name
+                            ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-200'
+                            : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="text-2xl mb-2">
+                          {cat.icon ? <span className="text-lg">{getIconEmoji(cat.icon)}</span> : '📝'}
+                        </div>
+                        <div className="font-medium text-slate-900">{cat.name}</div>
+                        {cat.description && (
+                          <div className="text-xs text-slate-500 mt-1 line-clamp-2">
+                            {cat.description}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Feedback Content */}
@@ -198,17 +239,13 @@ const SubmitFeedback = () => {
             </CardContent>
 
             <CardFooter className="flex items-center justify-between">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => navigate(-1)}
-              >
+              <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 loading={loading}
-                disabled={loading || formData.content.length < 10 || !formData.category}
+                disabled={loading || formData.content.length < 10 || !formData.category || categoriesLoading}
               >
                 <Send className="w-4 h-4 mr-2" />
                 Submit Feedback
@@ -217,13 +254,23 @@ const SubmitFeedback = () => {
           </form>
         </Card>
 
-        {/* Privacy Notice */}
         <p className="text-center text-sm text-slate-500 mt-6">
           All feedback is encrypted and stored securely. Anonymous submissions cannot be traced back to you.
         </p>
       </div>
     </div>
   );
+};
+
+// Helper: Map icon names to emojis
+const getIconEmoji = (iconName) => {
+  const iconMap = {
+    'Home': '🏢', 'Users': '👥', 'Shield': '🛡️', 'Star': '🎉',
+    'MessageSquare': '📢', 'Briefcase': '💬', 'Settings': '⚙️',
+    'Heart': '❤️', 'Brain': '🧠', 'BarChart3': '📊',
+    'AlertTriangle': '⚠️', 'CheckCircle': '✅',
+  };
+  return iconMap[iconName] || '📝';
 };
 
 export default SubmitFeedback;

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Feedback from '../models/Feedback.js';
-
+import Category from '../models/Category.js';
 dotenv.config();
 
 // =============================================================================
@@ -272,6 +272,23 @@ const seedDatabase = async () => {
     
     await Feedback.insertMany(feedbackDocs);
     console.log(`✅ Seeded ${feedbackDocs.length} feedback entries`);
+
+
+
+
+const defaultCategories = [
+  { name: 'Facilities', description: 'Buildings, equipment, and physical spaces', icon: 'Home', color: 'blue', order: 1 },
+  { name: 'Leadership', description: 'Management, governance, and decision-making', icon: 'Users', color: 'indigo', order: 2 },
+  { name: 'Safety', description: 'Security, health, and emergency concerns', icon: 'Shield', color: 'red', order: 3 },
+  { name: 'Events', description: 'Activities, programs, and gatherings', icon: 'Star', color: 'orange', order: 4 },
+  { name: 'Communication', description: 'Newsletters, announcements, and information', icon: 'MessageSquare', color: 'green', order: 5 },
+  { name: 'Other', description: 'Feedback that does not fit other categories', icon: 'Briefcase', color: 'gray', order: 6, isActive: true }
+];
+
+await Category.insertMany(defaultCategories);
+console.log(`✅ Seeded ${defaultCategories.length} categories`);
+
+
 
     // =============================================================================
     // 🎯 DISPLAY DEMO CREDENTIALS
