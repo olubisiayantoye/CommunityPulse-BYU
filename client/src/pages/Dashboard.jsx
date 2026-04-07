@@ -98,11 +98,13 @@ const Dashboard = () => {
     setFilters((current) => ({ ...current, [key]: value }));
   };
 
-  const handleExportCsv = async () => {
+  const handleExportCsv = async (reportType = 'detailed') => {
     try {
       setExportingCsv(true);
       const response = await exportAnalytics({
         format: 'csv',
+        reportType,
+        includeAdminNotes: isPrivilegedUser,
         days: parseDateRange(filters.dateRange),
         category: filters.category,
         platform: filters.platform
@@ -112,12 +114,12 @@ const Dashboard = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `community-pulse-analytics-${Date.now()}.csv`;
+      link.download = `community-pulse-${reportType}-analytics-${Date.now()}.csv`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      toast.success('CSV export started');
+      toast.success(`${reportType === 'summary' ? 'Summary' : 'Detailed'} CSV export started`);
     } catch (error) {
       toast.error('Unable to export CSV right now');
       console.error(error);
@@ -267,7 +269,10 @@ const Dashboard = () => {
             <Button variant="outline" size="sm" onClick={handleExportPdf}>
               <Download className="w-4 h-4 mr-1" /> Export PDF
             </Button>
-            <Button variant="primary" size="sm" onClick={handleExportCsv} loading={exportingCsv}>
+            <Button variant="outline" size="sm" onClick={() => handleExportCsv('summary')} loading={exportingCsv}>
+              <Download className="w-4 h-4 mr-1" /> Summary CSV
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => handleExportCsv('detailed')} loading={exportingCsv}>
               <Download className="w-4 h-4 mr-1" /> Export CSV
             </Button>
           </div>

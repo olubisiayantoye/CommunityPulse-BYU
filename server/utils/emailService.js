@@ -73,8 +73,48 @@ export const sendVerificationEmail = async ({ email, verificationUrl, name }) =>
     html: `<p>Hello ${name || 'there'},</p><p>Verify your email <a href="${verificationUrl}">here</a>.</p>`
   });
 
+export const sendWeeklySummaryEmail = async ({ email, name, organization, summary }) => {
+  const categoryItems = (summary.breakdowns?.categories || [])
+    .map((item) => `<li>${item.label}: ${item.count}</li>`)
+    .join('');
+  const statusItems = (summary.breakdowns?.statuses || [])
+    .map((item) => `<li>${item.label}: ${item.count}</li>`)
+    .join('');
+
+  return sendEmail({
+    to: email,
+    subject: `Weekly CommunityPulse summary${organization ? ` for ${organization}` : ''}`,
+    text: [
+      `Hello ${name || 'there'},`,
+      '',
+      `Here is your weekly CommunityPulse summary${organization ? ` for ${organization}` : ''}.`,
+      `Total feedback: ${summary.overview?.totalFeedback || 0}`,
+      `Total upvotes: ${summary.overview?.totalUpvotes || 0}`,
+      `Average sentiment score: ${summary.overview?.avgSentimentScore || 0}`,
+      `Feedback with admin notes: ${summary.overview?.feedbackWithAdminNotes || 0}`,
+      `Total admin notes: ${summary.overview?.totalAdminNotes || 0}`
+    ].join('\n'),
+    html: `
+      <p>Hello ${name || 'there'},</p>
+      <p>Here is your weekly CommunityPulse summary${organization ? ` for <strong>${organization}</strong>` : ''}.</p>
+      <ul>
+        <li>Total feedback: ${summary.overview?.totalFeedback || 0}</li>
+        <li>Total upvotes: ${summary.overview?.totalUpvotes || 0}</li>
+        <li>Average sentiment score: ${summary.overview?.avgSentimentScore || 0}</li>
+        <li>Feedback with admin notes: ${summary.overview?.feedbackWithAdminNotes || 0}</li>
+        <li>Total admin notes: ${summary.overview?.totalAdminNotes || 0}</li>
+      </ul>
+      <p><strong>Category breakdown</strong></p>
+      <ul>${categoryItems || '<li>No category activity this week.</li>'}</ul>
+      <p><strong>Status breakdown</strong></p>
+      <ul>${statusItems || '<li>No status changes this week.</li>'}</ul>
+    `
+  });
+};
+
 export default {
   sendEmail,
   sendPasswordResetEmail,
-  sendVerificationEmail
+  sendVerificationEmail,
+  sendWeeklySummaryEmail
 };
