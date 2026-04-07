@@ -174,18 +174,29 @@ const AdminPanel = () => {
     }
   };
 
-  const handleExport = async (format = 'csv') => {
+  const handleExport = async ({
+    format = 'csv',
+    reportType = 'detailed',
+    includeAdminNotes = true
+  } = {}) => {
     try {
-      const response = await exportAnalytics({ format });
+      const response = await exportAnalytics({
+        format,
+        reportType,
+        includeAdminNotes,
+        days: 30,
+        category: filters.category || 'all',
+        status: filters.status || 'all'
+      });
       // Create download link
       const blob = new Blob([response.data], { type: response.headers['content-type'] });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `community-pulse-export-${Date.now()}.${format}`;
+      a.download = `community-pulse-${reportType}-export-${Date.now()}.${format}`;
       a.click();
       window.URL.revokeObjectURL(url);
-      toast.success('Export downloaded');
+      toast.success(`${reportType === 'summary' ? 'Summary' : 'Detailed'} export downloaded`);
     } catch (error) {
       toast.error('Failed to export data');
     }
@@ -286,7 +297,18 @@ const AdminPanel = () => {
             <Button variant="outline" size="sm" onClick={() => { fetchAdminData(); fetchAuditLogs(); }}>
               <RefreshCw className="w-4 h-4 mr-1" /> Refresh
             </Button>
-            <Button variant="primary" size="sm" onClick={() => handleExport('csv')}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport({ format: 'csv', reportType: 'summary', includeAdminNotes: true })}
+            >
+              <Download className="w-4 h-4 mr-1" /> Summary CSV
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => handleExport({ format: 'csv', reportType: 'detailed', includeAdminNotes: true })}
+            >
               <Download className="w-4 h-4 mr-1" /> Export CSV
             </Button>
           </div>
