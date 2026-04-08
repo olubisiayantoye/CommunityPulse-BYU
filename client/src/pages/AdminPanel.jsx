@@ -151,19 +151,7 @@ const AdminPanel = () => {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      const adminNote = window.prompt(
-        'Add an optional admin note for the audit log. Leave blank to skip.',
-        ''
-      );
-
-      if (adminNote === null) {
-        return;
-      }
-
-      await updateFeedback(id, {
-        status: newStatus,
-        adminNote: adminNote.trim() || undefined
-      });
+      await updateFeedback(id, { status: newStatus });
       // Update local state
       setPendingFeedback(prev => prev.filter(fb => fb._id !== id));
       setAlerts(prev => prev.filter(a => a._id !== id));
@@ -185,8 +173,7 @@ const AdminPanel = () => {
         reportType,
         includeAdminNotes,
         days: 30,
-        category: filters.category || 'all',
-        status: filters.status || 'all'
+        category: filters.category || 'all'
       });
       // Create download link
       const blob = new Blob([response.data], { type: response.headers['content-type'] });
@@ -524,6 +511,12 @@ const AdminPanel = () => {
                             </span>
                           </div>
                           <p className="text-sm text-slate-700 mb-2 line-clamp-2">{alert.content}</p>
+                          {alert.adminNotes?.length > 0 ? (
+                            <div className="mb-2 rounded-lg border border-red-200 bg-white/80 px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-red-500">Latest admin note</p>
+                              <p className="text-sm text-slate-700">{alert.adminNotes[alert.adminNotes.length - 1]?.note}</p>
+                            </div>
+                          ) : null}
                           <div className="flex items-center gap-3 text-xs text-slate-500">
                             <span>👍 {alert.upvoteCount} upvotes</span>
                             <span>Score: {alert.sentiment?.score?.toFixed(2)}</span>
@@ -531,7 +524,7 @@ const AdminPanel = () => {
                         </div>
                         <div className="flex flex-col gap-2">
                           <Button size="sm" variant="outline" onClick={() => navigate(`/feedback/${alert._id}`)}>
-                            <Eye className="w-4 h-4" />
+                            Add Note
                           </Button>
                           <Button size="sm" onClick={() => handleStatusUpdate(alert._id, 'In Progress')}>
                             Resolve
@@ -583,12 +576,21 @@ const AdminPanel = () => {
                             <span className="text-xs text-slate-500">{fb.category}</span>
                           </div>
                           <p className="text-sm text-slate-700 mb-2 line-clamp-2">{fb.content}</p>
+                          {fb.adminNotes?.length > 0 ? (
+                            <div className="mb-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Latest admin note</p>
+                              <p className="text-sm text-slate-700">{fb.adminNotes[fb.adminNotes.length - 1]?.note}</p>
+                            </div>
+                          ) : null}
                           <div className="flex items-center gap-3 text-xs text-slate-500">
                             <span>👍 {fb.upvoteCount}</span>
                             <span>{new Date(fb.submittedAt).toLocaleDateString()}</span>
                           </div>
                         </div>
                         <div className="flex flex-col gap-2">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/feedback/${fb._id}`)}>
+                            Add Note
+                          </Button>
                           <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(fb._id, 'Resolved')}>
                             Resolve
                           </Button>

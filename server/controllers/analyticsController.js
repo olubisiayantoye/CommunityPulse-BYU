@@ -103,7 +103,7 @@ export const getDashboardAnalytics = async (req, res) => {
       })
         .sort({ upvoteCount: -1, submittedAt: -1 })
         .limit(10)
-        .select('content category sentiment upvoteCount status submittedAt metadata.platform')
+        .select('content category sentiment upvoteCount status submittedAt metadata.platform adminNotes')
         .lean(),
       getTrendData(query, parseRequestedDays(days), trendInterval),
       Feedback.aggregate([
@@ -440,7 +440,9 @@ export const exportAnalytics = async (req, res) => {
       includeAdminNotes = 'true'
     } = req.query;
 
-    const includeNotes = includeAdminNotes !== 'false';
+    const includeNotes = ['admin', 'moderator'].includes(req.user?.role)
+      ? reportType === 'detailed'
+      : includeAdminNotes !== 'false';
     const query = await buildExportQuery({
       days,
       startDate,
@@ -523,7 +525,19 @@ export const getPriorityAlerts = async (req, res) => {
         }
       },
       { $sort: { priorityScore: -1 } },
-      { $limit: parseInt(limit) }
+      { $limit: parseInt(limit) },
+      {
+        $project: {
+          content: 1,
+          category: 1,
+          sentiment: 1,
+          upvoteCount: 1,
+          status: 1,
+          submittedAt: 1,
+          priorityScore: 1,
+          adminNotes: 1
+        }
+      }
     ]);
 
     // Alert summary
