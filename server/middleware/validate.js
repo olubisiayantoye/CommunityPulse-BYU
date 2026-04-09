@@ -334,6 +334,43 @@ export const validateCategory = [
     .withMessage('isActive must be a boolean')
 ];
 
+// Add to existing exports at the bottom of validate.js
+
+export const validateUserUpdate = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Name must be 2-50 characters'),
+  body('email')
+    .optional()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email address'),
+  body('role')
+    .optional()
+    .isIn(['member', 'moderator', 'admin'])
+    .withMessage('Role must be member, moderator, or admin'),
+  body('organization')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Organization cannot be empty'),
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean'),
+  body('bio')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Bio cannot exceed 500 characters'),
+  body('avatar')
+    .optional()
+    .isURL()
+    .withMessage('Avatar must be a valid URL')
+];
+
 
 validateRegister.push(handleValidationErrors);
 validateLogin.push(handleValidationErrors);

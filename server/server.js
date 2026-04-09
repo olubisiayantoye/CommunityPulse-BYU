@@ -25,6 +25,7 @@ import { notFound } from './middleware/notFound.js';
 
 // Add import
 import categoryRoutes from './routes/categoryRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 
 
@@ -113,6 +114,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 app.use('/api/categories', categoryRoutes);
+app.use('/api/users', userRoutes);
 // =============================================================================
 // ⚠️ ERROR HANDLING
 // =============================================================================

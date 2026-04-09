@@ -41,6 +41,7 @@ const Header = () => {
 if (user?.role === 'admin') {
   navLinks.push(
     { label: 'Categories', path: '/admin/categories', icon: Settings },
+    { label: 'Users', path: '/admin/users', icon: User }, 
     { label: 'Admin', path: '/admin', icon: Settings }
   );
 }

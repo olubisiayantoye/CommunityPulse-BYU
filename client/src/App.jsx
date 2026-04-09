@@ -22,6 +22,7 @@ import FeedbackDetail from './pages/FeedbackDetail';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Categories from './pages/admin/Categories';
+import UserManagement from './pages/admin/UserManagement';
 function App() {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -79,7 +80,10 @@ function App() {
         <Route path="/admin/categories" element={
           <ProtectedRoute adminOnly><Categories /></ProtectedRoute>
         } />
-
+        <Route path="/admin/users" element={
+          <ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>
+        } />
+        
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
