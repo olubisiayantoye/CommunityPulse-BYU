@@ -2,6 +2,13 @@ import Feedback from '../models/Feedback.js';
 import AuditLog from '../models/AuditLog.js';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
+import {
+  buildDetailedCsv,
+  buildExportQuery,
+  buildSummaryCsv,
+  getExportFeedback,
+  getSummaryReport
+} from '../utils/reportingService.js';
 
 // =============================================================================
 // 📊 DASHBOARD ANALYTICS
@@ -426,55 +433,44 @@ export const exportAnalytics = async (req, res) => {
       category,
       sentiment,
       platform,
-      days
+      status,
+      days,
+      organization,
+      reportType = 'detailed',
+      includeAdminNotes = 'true'
     } = req.query;
 
-    const dateFilter = buildDateFilter({ days, startDate, endDate });
-    const query = buildAnalyticsQuery({ dateFilter, category, platform });
-
-    if (sentiment) query['sentiment.label'] = sentiment;
-
-    const feedback = await Feedback.find(query)
-      .select('content category sentiment upvoteCount status submittedAt keywords metadata.platform isAnonymous')
-      .sort({ submittedAt: -1 })
-      .lean();
+    const includeNotes = includeAdminNotes !== 'false';
+    const query = await buildExportQuery({
+      days,
+      startDate,
+      endDate,
+      category,
+      sentiment,
+      platform,
+      status,
+      organization
+    });
 
     if (format === 'csv') {
-      const headers = [
-        'Date',
-        'Category',
-        'Platform',
-        'Participation',
-        'Sentiment',
-        'Sentiment Score',
-        'Status',
-        'Upvotes',
-        'Content',
-        'Keywords'
-      ];
-
-      const escapeCsv = (value = '') => `"${String(value).replace(/"/g, '""')}"`;
-
-      const rows = feedback.map((f) => [
-        f.submittedAt.toISOString().split('T')[0],
-        f.category,
-        f.metadata?.platform || 'Web',
-        f.isAnonymous ? 'Anonymous' : 'Identified',
-        f.sentiment.label,
-        f.sentiment.score,
-        f.status,
-        f.upvoteCount,
-        escapeCsv(f.content),
-        escapeCsv(f.keywords?.join('; ') || '')
-      ]);
-
-      const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+      const csvContent = reportType === 'summary'
+        ? buildSummaryCsv(await getSummaryReport(query, { organization: organization || null }))
+        : buildDetailedCsv(
+            await getExportFeedback(query, { includeAdminNotes: includeNotes }),
+            { includeAdminNotes: includeNotes }
+          );
 
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=community-pulse-analytics-${Date.now()}.csv`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=community-pulse-${reportType}-analytics-${Date.now()}.csv`
+      );
       res.send(csvContent);
       return;
     }
+
+    const feedback = await getExportFeedback(query, { includeAdminNotes: includeNotes });
+    const summary = await getSummaryReport(query, { organization: organization || null });
 
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename=community-pulse-analytics-${Date.now()}.json`);
@@ -482,6 +478,7 @@ export const exportAnalytics = async (req, res) => {
       success: true,
       exportedAt: new Date().toISOString(),
       totalRecords: feedback.length,
+      summary,
       data: feedback
     });
   } catch (error) {

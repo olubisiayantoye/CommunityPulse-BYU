@@ -22,6 +22,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
+import { initializeWeeklySummaryScheduler } from './utils/weeklySummaryScheduler.js';
 
 // Add import
 import categoryRoutes from './routes/categoryRoutes.js';
@@ -163,6 +164,8 @@ const startServer = async () => {
 ╚═══════════════════════════════════════════════════════════╝
       `);
     });
+
+    initializeWeeklySummaryScheduler();
 
     // Graceful shutdown
     const gracefulShutdown = async (signal) => {
