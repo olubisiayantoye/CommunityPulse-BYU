@@ -198,7 +198,8 @@ export const getFeedback = async (req, res) => {
 export const getFeedbackById = async (req, res) => {
   try {
     const feedback = await Feedback.findById(req.params.id)
-      .select('-submittedBy');
+      .select('-submittedBy')
+      .populate('adminNotes.addedBy', 'name email');
 
     if (!feedback) {
       return res.status(404).json({ 
@@ -222,6 +223,7 @@ export const updateFeedback = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, adminNote, content } = req.body;
+    const trimmedAdminNote = typeof adminNote === 'string' ? adminNote.trim() : '';
 
     const feedback = await Feedback.findById(id);
     const previousStatus = feedback?.status || null;
@@ -267,10 +269,10 @@ export const updateFeedback = async (req, res) => {
     if (['admin', 'moderator'].includes(req.user.role)) {
       if (status) feedback.status = status;
       
-      if (adminNote) {
+      if (trimmedAdminNote) {
         feedback.adminNotes = feedback.adminNotes || [];
         feedback.adminNotes.push({
-          note: adminNote,
+          note: trimmedAdminNote,
           addedBy: req.user._id,
           timestamp: new Date()
         });
@@ -281,26 +283,51 @@ export const updateFeedback = async (req, res) => {
     await feedback.save();
 
     await recordAuditLog(req, {
-      action:
-        req.user.role === 'member'
-          ? 'feedback.updated'
-          : 'feedback.status_updated',
+      action: resolveFeedbackAuditAction({
+        role: req.user.role,
+        previousStatus,
+        nextStatus: feedback.status || null,
+        hasAdminNote: Boolean(trimmedAdminNote),
+        hasContentUpdate: Boolean(content)
+      }),
       targetId: feedback._id,
       details: {
         previousStatus,
         newStatus: feedback.status || null,
-        note: adminNote || null,
+        note: trimmedAdminNote || null,
         contentUpdated: Boolean(content),
         category: feedback.category
       },
-      severity: adminNote ? 'warning' : 'info'
+      severity: trimmedAdminNote ? 'warning' : 'info'
     });
 
-    res.json({ success: true, data: { feedback } });
+    const populatedFeedback = await Feedback.findById(feedback._id)
+      .select('-submittedBy')
+      .populate('adminNotes.addedBy', 'name email');
+
+    res.json({ success: true, data: { feedback: populatedFeedback } });
   } catch (error) {
     console.error('❌ Update Feedback Error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
+};
+
+const resolveFeedbackAuditAction = ({
+  role,
+  previousStatus,
+  nextStatus,
+  hasAdminNote,
+  hasContentUpdate
+}) => {
+  if (role === 'member') {
+    return 'feedback.updated';
+  }
+
+  if (hasAdminNote && previousStatus === nextStatus && !hasContentUpdate) {
+    return 'feedback.note_added';
+  }
+
+  return 'feedback.status_updated';
 };
 
 // =============================================================================
