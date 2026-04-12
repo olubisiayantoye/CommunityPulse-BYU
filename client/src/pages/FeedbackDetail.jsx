@@ -22,6 +22,7 @@ const FeedbackDetail = () => {
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
   const [error, setError] = useState('');
+  const [adminNote, setAdminNote] = useState('');
 
   useEffect(() => {
     const fetchFeedback = async () => {
@@ -41,11 +42,36 @@ const FeedbackDetail = () => {
   const handleStatusChange = async (nextStatus) => {
     setStatusLoading(true);
     try {
-      const response = await updateFeedback(id, { status: nextStatus });
+      const payload = { status: nextStatus };
+      if (adminNote.trim()) {
+        payload.adminNote = adminNote.trim();
+      }
+
+      const response = await updateFeedback(id, payload);
       setFeedback(response.data.feedback);
+      setAdminNote('');
       toast.success(`Status updated to ${nextStatus}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to update feedback status.');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleAddAdminNote = async () => {
+    if (!adminNote.trim()) {
+      toast.error('Enter an admin note before saving.');
+      return;
+    }
+
+    setStatusLoading(true);
+    try {
+      const response = await updateFeedback(id, { adminNote: adminNote.trim() });
+      setFeedback(response.data.feedback);
+      setAdminNote('');
+      toast.success('Admin note added');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to save admin note.');
     } finally {
       setStatusLoading(false);
     }
@@ -125,7 +151,10 @@ const FeedbackDetail = () => {
                 {feedback.adminNotes.map((note, index) => (
                   <div key={`${note.timestamp}-${index}`} className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                     <p className="text-slate-700">{note.note}</p>
-                    <p className="text-xs text-slate-500 mt-2">{new Date(note.timestamp).toLocaleString()}</p>
+                    <p className="text-xs text-slate-500 mt-2">
+                      {new Date(note.timestamp).toLocaleString()}
+                      {note.addedBy?.name ? ` by ${note.addedBy.name}` : ''}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -134,7 +163,36 @@ const FeedbackDetail = () => {
 
           {(user?.role === 'admin' || user?.role === 'moderator') && (
             <div className="border-t border-slate-200 pt-6">
-              <h2 className="text-sm font-semibold text-slate-900 mb-3">Quick actions</h2>
+              <h2 className="text-sm font-semibold text-slate-900 mb-3">Admin actions</h2>
+              <div className="mb-5">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Add admin note
+                </label>
+                <textarea
+                  value={adminNote}
+                  onChange={(event) => setAdminNote(event.target.value)}
+                  rows={4}
+                  placeholder="Add internal context, follow-up details, or moderation notes."
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    disabled={statusLoading || !adminNote.trim()}
+                    onClick={handleAddAdminNote}
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {statusLoading ? 'Saving...' : 'Save note'}
+                  </button>
+                  {adminNote.trim() ? (
+                    <p className="text-xs text-slate-500 self-center">
+                      The current note will also be attached if you change status now.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">Update status</h3>
               <div className="flex flex-wrap gap-3">
                 {['Pending', 'In Progress', 'Resolved', 'Dismissed'].map((status) => (
                   <button
