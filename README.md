@@ -275,7 +275,7 @@ npm run dev           # http://localhost:5173
 - Frontend: https://communitypulse-byu-1.onrender.com
 - Backend API Base URL: https://communitypulse-byu.onrender.com/api
 
-## ⚙️ API Overview
+# ⚙️ API Overview
 
 The API follows a RESTful structure.
 Base route:
@@ -284,7 +284,7 @@ GET /api
 
 ⚠️ Note: This route intentionally returns a "not found" response but lists all available endpoints for developer reference.
 
-# 📡 Available Endpoints
+## 📡 Available Endpoints
 ## 1. 🔐 Authentication
 - POST /api/auth/register → Register a new user
 - POST /api/auth/login → Login
@@ -294,25 +294,25 @@ GET /api
 - PUT /api/auth/me/change-password → Change password
 - DELETE /api/auth/me → Delete account
 
-🔑 Password Recovery
+## 2. 🔑 Password Recovery
 - POST /api/auth/forgot-password
 - POST /api/auth/reset-password
 - GET /api/auth/verify-email/:token
 - POST /api/auth/resend-verification
 
-💬 Feedback System
+## 3. 💬 Feedback System
 - POST /api/feedback → Create feedback
 - GET /api/feedback → Get all feedback
 - PUT /api/feedback/:id → Update feedback
 - DELETE /api/feedback/:id → Delete feedback
 - POST /api/feedback/:id/upvote → Upvote feedback
 
-📊 Analytics
+## 4. 📊 Analytics
 - GET /api/analytics/dashboard
 - GET /api/analytics/sentiment
 - GET /api/analytics/export
 
-❤️ Health Check
+## 4. ❤️ Health Check
 - GET /api/health
 - 🧪 Example Response (Base Route)
 {
