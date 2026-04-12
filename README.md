@@ -285,14 +285,14 @@ GET /api
 ⚠️ Note: This route intentionally returns a "not found" response but lists all available endpoints for developer reference.
 
 ## 📡 Available Endpoints
-🔐 Authentication
-POST /api/auth/register → Register a new user
-POST /api/auth/login → Login
-POST /api/auth/logout → Logout
-GET /api/auth/me → Get current user
-PUT /api/auth/me → Update profile
-PUT /api/auth/me/change-password → Change password
-DELETE /api/auth/me → Delete account
+# 1. 🔐 Authentication
+- POST /api/auth/register → Register a new user
+- POST /api/auth/login → Login
+- POST /api/auth/logout → Logout
+- GET /api/auth/me → Get current user
+- PUT /api/auth/me → Update profile
+- PUT /api/auth/me/change-password → Change password
+- DELETE /api/auth/me → Delete account
 
 🔑 Password Recovery
 POST /api/auth/forgot-password
