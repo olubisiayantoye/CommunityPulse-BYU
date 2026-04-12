@@ -269,3 +269,54 @@ npm install
 cp .env.example .env  # Set VITE_API_URL=http://localhost:5000/api
 npm run dev           # http://localhost:5173
 ```
+
+## 
+## 🚀 Live Demo
+Frontend: https://communitypulse-byu-1.onrender.com
+Backend API Base URL: https://communitypulse-byu.onrender.com/api
+
+## ⚙️ API Overview
+
+The API follows a RESTful structure.
+Base route:
+
+GET /api
+
+⚠️ Note: This route intentionally returns a "not found" response but lists all available endpoints for developer reference.
+
+## 📡 Available Endpoints
+🔐 Authentication
+POST /api/auth/register → Register a new user
+POST /api/auth/login → Login
+POST /api/auth/logout → Logout
+GET /api/auth/me → Get current user
+PUT /api/auth/me → Update profile
+PUT /api/auth/me/change-password → Change password
+DELETE /api/auth/me → Delete account
+
+🔑 Password Recovery
+POST /api/auth/forgot-password
+POST /api/auth/reset-password
+GET /api/auth/verify-email/:token
+POST /api/auth/resend-verification
+
+💬 Feedback System
+POST /api/feedback → Create feedback
+GET /api/feedback → Get all feedback
+PUT /api/feedback/:id → Update feedback
+DELETE /api/feedback/:id → Delete feedback
+POST /api/feedback/:id/upvote → Upvote feedback
+
+📊 Analytics
+GET /api/analytics/dashboard
+GET /api/analytics/sentiment
+GET /api/analytics/export
+
+❤️ Health Check
+GET /api/health
+🧪 Example Response (Base Route)
+{
+  "success": false,
+  "message": "Route GET /api not found",
+  "availableEndpoints": [...]
+}
